@@ -1,3 +1,6 @@
+# Environmental variables
+.env
+
 # Prerequisites
 *.d
 
@@ -17,7 +20,6 @@
 *.dll
 
 # Fortran module files
-*.mod
 *.smod
 
 # Compiled Static libraries
