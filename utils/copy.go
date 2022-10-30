@@ -1,22 +1,30 @@
 package utils
 
 import (
+	"clon/instructions"
+	"clon/services"
 	"fmt"
 )
 
 type CopyCommand struct {
 	Force bool `short:"f" long:"force" description:"Force copy of files"`
-	// TODO: hadling addresses check for either remote or local
-	Args struct {
-		fromPath string
-		toPath   string
+	Args  struct {
+		FromPath string
+		ToPath   string
 	} `positional-args:"yes" required:"2"`
 }
 
 var copyCommand CopyCommand
 
 func (options *CopyCommand) Execute(args []string) error {
-	fmt.Printf("Copying: %#v\n", args)
+	fmt.Printf("Copying %v -> %v\n\n", options.Args.FromPath, options.Args.ToPath)
+
+	fromPath := options.Args.FromPath
+	toPath := options.Args.ToPath
+	sess := services.ConnectAws()
+
+	instructions.Copy(sess, fromPath, toPath)
+
 	return nil
 }
 
