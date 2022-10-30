@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"clon/instructions"
 	"clon/services"
 	"fmt"
 )
@@ -13,12 +14,12 @@ type LsCommand struct {
 
 var lsCommand LsCommand
 
-func (x *LsCommand) Execute([]string) error {
-	fmt.Printf("Showing all the files under the path: %v\n\n", x.Args.Path)
+func (options *LsCommand) Execute([]string) error {
+	fmt.Printf("Showing all the files under the path: %v\n\n", options.Args.Path)
 
 	sess := services.ConnectAws()
 
-	services.GetBucketItems(sess, x.Args.Path)
+	instructions.ListElements(sess, options.Args.Path)
 
 	return nil
 }

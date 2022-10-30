@@ -21,16 +21,4 @@ func main() {
 			os.Exit(1)
 		}
 	}
-
-	//services.GetBucketsList(Sess)
-	//getBucketItems(sess, "clon-demo")
-	//createBucket(sess, "clon-demo")
-	//uploadFile(sess, "clon-demo", "./main.go", "./")
-	//uploadFile(sess, "clon-demo", "./image.jpeg", "./img/")
-
-	//downloadFile(sess, "clon-demo", "./img/image.jpeg", "./")
-	//deleteBucketFile(sess, "clon-demo", "./img/image.jpeg")
-
-	//awsAccessKeyID := services.GetEnvWithKey("AWS_ACCESS_KEY_ID")
-	//fmt.Println("My access key ID is ", awsAccessKeyID)
 }
