@@ -104,8 +104,6 @@ func GetBucketsList(sess *session.Session) {
 		ExitErrorf("Unable to list buckets, %v", err)
 	}
 
-	fmt.Println("Buckets:")
-
 	for _, b := range result.Buckets {
 		fmt.Printf("* %s created on %s\n",
 			aws.StringValue(b.Name), aws.TimeValue(b.CreationDate))
@@ -154,4 +152,20 @@ func RemoveBucket(sess *session.Session, bucket string) error {
 	}
 
 	return nil
+}
+
+func GetBucketFileSize(sess *session.Session, bucket string, remoteFilePath string) {
+	svc := s3.New(sess)
+
+	headObj := s3.HeadObjectInput{
+		Bucket: aws.String(bucket),
+		Key:    aws.String(remoteFilePath),
+	}
+	result, err := svc.HeadObject(&headObj)
+
+	if err != nil {
+		ExitErrorf("Unable to get size of file %q in %q, %v", remoteFilePath, bucket, err)
+	}
+
+	fmt.Printf("Size of %q (bucket: %q): %v bytes\n", remoteFilePath, bucket, aws.Int64Value(result.ContentLength))
 }
