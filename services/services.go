@@ -79,12 +79,7 @@ func GetBucketNameFromRemotePath(path string) string {
 func GetRemoteFilePath(path string) string {
 	// Remove bucket name and replace : with /
 	pathElements := strings.Split(path, ":")[1:]
-	if len(pathElements) == 0 {
-		return ""
-	} else {
-		return "/" + strings.Join(pathElements, "/")
-	}
-
+	return "/" + strings.Join(pathElements, "/")
 }
 
 // GetRemoteFilePathPrefix : Return a prefix for a path
