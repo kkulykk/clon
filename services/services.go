@@ -84,7 +84,6 @@ func GetRemoteFilePath(path string) string {
 	} else {
 		return "/" + strings.Join(pathElements, "/")
 	}
-
 }
 
 // GetRemoteFilePathPrefix : Return a prefix for a path
