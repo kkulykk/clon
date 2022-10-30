@@ -10,7 +10,7 @@ import (
 )
 
 func DownloadFile(sess *session.Session, bucket string, remoteFilePath string, localDirectoryPath string) {
-	fileName := getFileNameByPath(remoteFilePath)
+	fileName := GetFileNameByPath(remoteFilePath)
 	localFilePath := localDirectoryPath + fileName
 	file, err := os.Create(localFilePath)
 
@@ -35,7 +35,7 @@ func DownloadFile(sess *session.Session, bucket string, remoteFilePath string, l
 }
 
 func UploadFile(sess *session.Session, bucket string, localFilePath string, remoteDirectoryPath string) {
-	fileName := getFileNameByPath(localFilePath)
+	fileName := GetFileNameByPath(localFilePath)
 	remoteFilePath := remoteDirectoryPath + fileName
 	file, err := os.Open(localFilePath)
 
@@ -112,20 +112,27 @@ func GetBucketsList(sess *session.Session) {
 	}
 }
 
-func GetBucketItems(sess *session.Session, bucket string) {
+func GetBucketItems(sess *session.Session, path string) {
 	svc := s3.New(sess)
-	resp, err := svc.ListObjectsV2(&s3.ListObjectsV2Input{Bucket: aws.String(bucket)})
+	bucket := GetBucketNameByPath(path)
+	prefix := GetPath(path)
+	resp, err := svc.ListObjectsV2(&s3.ListObjectsV2Input{Bucket: aws.String(bucket), Prefix: aws.String(prefix)})
 
 	if err != nil {
 		ExitErrorf("Unable to list items in bucket %q, %v", bucket, err)
 	}
 
+	fmt.Println("Found", len(resp.Contents), "items in remote", path)
+	fmt.Println("")
+
+	fmt.Println("--------------------------------------------------")
+
 	for _, item := range resp.Contents {
-		fmt.Println("Name:         ", *item.Key)
-		fmt.Println("Last modified:", *item.LastModified)
+		fmt.Println("Name:         ", GetFileNameByPath(*item.Key))
+		fmt.Println("Path:         ", *item.Key)
 		fmt.Println("Size:         ", *item.Size)
-		fmt.Println("Storage class:", *item.StorageClass)
-		fmt.Println("")
+		fmt.Println("Last modified:", *item.LastModified)
+		fmt.Println("--------------------------------------------------")
 	}
 }
 
