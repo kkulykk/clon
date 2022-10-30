@@ -1,7 +1,7 @@
 package utils
 
 import (
-	"clon/services"
+	"clon/instructions"
 	"fmt"
 )
 
@@ -13,12 +13,10 @@ type CreateRemoteCommand struct {
 
 var createRemoteCommand CreateRemoteCommand
 
-func (x *CreateRemoteCommand) Execute([]string) error {
-	fmt.Printf("Creating new remote -> :%v\n\n", x.Args.RemoteName)
+func (options *CreateRemoteCommand) Execute([]string) error {
+	fmt.Printf("Creating new remote -> %v\n\n", options.Args.RemoteName)
 
-	sess := services.ConnectAws()
-
-	services.CreateBucket(sess, x.Args.RemoteName)
+	instructions.CreateRemote(options.Args.RemoteName)
 
 	return nil
 }

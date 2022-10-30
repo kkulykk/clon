@@ -1,7 +1,7 @@
 package utils
 
 import (
-	"clon/services"
+	"clon/instructions"
 	"fmt"
 )
 
@@ -13,12 +13,10 @@ type DeleteRemoteCommand struct {
 
 var deleteRemoteCommand DeleteRemoteCommand
 
-func (x *DeleteRemoteCommand) Execute([]string) error {
-	fmt.Printf("Deleting an existing remote -> :%v\n\n", x.Args.RemoteName)
+func (options *DeleteRemoteCommand) Execute([]string) error {
+	fmt.Printf("Deleting an existing remote -> %v\n\n", options.Args.RemoteName)
 
-	sess := services.ConnectAws()
-
-	services.RemoveBucket(sess, x.Args.RemoteName)
+	instructions.DeleteRemote(options.Args.RemoteName)
 
 	return nil
 }
