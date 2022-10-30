@@ -114,8 +114,13 @@ func GetBucketsList(sess *session.Session) {
 
 func GetBucketItems(sess *session.Session, path string) {
 	svc := s3.New(sess)
+<<<<<<< Updated upstream
 	bucket := GetBucketNameByPath(path)
 	prefix := GetPath(path)
+=======
+	bucket := GetBucketNameFromRemotePath(path)
+	prefix := GetRemoteFilePathPrefix(path)
+>>>>>>> Stashed changes
 	resp, err := svc.ListObjectsV2(&s3.ListObjectsV2Input{Bucket: aws.String(bucket), Prefix: aws.String(prefix)})
 
 	if err != nil {
