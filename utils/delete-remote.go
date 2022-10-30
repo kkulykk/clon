@@ -2,6 +2,7 @@ package utils
 
 import (
 	"clon/instructions"
+	"clon/services"
 	"fmt"
 )
 
@@ -16,7 +17,9 @@ var deleteRemoteCommand DeleteRemoteCommand
 func (options *DeleteRemoteCommand) Execute([]string) error {
 	fmt.Printf("Deleting an existing remote -> %v\n\n", options.Args.RemoteName)
 
-	instructions.DeleteRemote(options.Args.RemoteName)
+	sess := services.ConnectAws()
+
+	instructions.DeleteRemote(sess, options.Args.RemoteName)
 
 	return nil
 }

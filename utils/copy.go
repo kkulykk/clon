@@ -2,6 +2,7 @@ package utils
 
 import (
 	"clon/instructions"
+	"clon/services"
 	"fmt"
 )
 
@@ -20,8 +21,9 @@ func (options *CopyCommand) Execute(args []string) error {
 
 	fromPath := options.Args.FromPath
 	toPath := options.Args.ToPath
+	sess := services.ConnectAws()
 
-	instructions.Copy(fromPath, toPath)
+	instructions.Copy(sess, fromPath, toPath)
 
 	return nil
 }

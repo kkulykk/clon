@@ -1,22 +1,19 @@
 package instructions
 
-import "clon/services"
+import (
+	"clon/services"
+	"github.com/aws/aws-sdk-go/aws/session"
+)
 
-func CreateRemote(remoteName string) {
-	sess := services.ConnectAws()
-
+func CreateRemote(sess *session.Session, remoteName string) {
 	services.CreateBucket(sess, remoteName)
 }
 
-func DeleteRemote(remoteName string) {
-	sess := services.ConnectAws()
-
+func DeleteRemote(sess *session.Session, remoteName string) {
 	services.RemoveBucket(sess, remoteName)
 }
 
-func Copy(fromPath string, toPath string) {
-	sess := services.ConnectAws()
-
+func Copy(sess *session.Session, fromPath string, toPath string) {
 	if services.IsRemotePath(fromPath) {
 		bucketName := services.GetBucketNameFromRemotePath(fromPath)
 		remoteFilePath := services.GetRemoteFilePath(fromPath)

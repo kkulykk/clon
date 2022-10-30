@@ -2,6 +2,7 @@ package utils
 
 import (
 	"clon/instructions"
+	"clon/services"
 	"fmt"
 )
 
@@ -16,7 +17,9 @@ var createRemoteCommand CreateRemoteCommand
 func (options *CreateRemoteCommand) Execute([]string) error {
 	fmt.Printf("Creating new remote -> %v\n\n", options.Args.RemoteName)
 
-	instructions.CreateRemote(options.Args.RemoteName)
+	sess := services.ConnectAws()
+
+	instructions.CreateRemote(sess, options.Args.RemoteName)
 
 	return nil
 }
