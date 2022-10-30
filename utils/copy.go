@@ -6,9 +6,10 @@ import (
 
 type CopyCommand struct {
 	Force bool `short:"f" long:"force" description:"Force copy of files"`
-	Args  struct {
-		localPath  string
-		remotePath string
+	// TODO: hadling addresses check for either remote or local
+	Args struct {
+		fromPath string
+		toPath   string
 	} `positional-args:"yes" required:"2"`
 }
 
