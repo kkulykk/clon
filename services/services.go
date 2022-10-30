@@ -60,3 +60,16 @@ func getFileNameByPath(path string) string {
 	splitPath := strings.Split(path, "/")
 	return splitPath[len(splitPath)-1]
 }
+
+func IsRemotePath(path string) bool {
+	return strings.Contains(path, ":")
+}
+
+func GetBucketNameFromRemotePath(path string) string {
+	return strings.Split(path, ":")[0]
+}
+
+func GetRemoteFilePath(path string) string {
+	// Remove bucket name and replace : with /
+	return "/" + strings.Join(strings.Split(path, ":")[1:], "/")
+}
