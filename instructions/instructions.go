@@ -63,3 +63,7 @@ func Size(sess *session.Session, filePath string) {
 
 	services.GetBucketFileSize(sess, bucketName, remoteFilePath)
 }
+
+func GetRemotes(sess *session.Session) {
+	services.GetBucketsList(sess)
+}
