@@ -135,6 +135,19 @@ func getBucketItems(sess *session.Session, bucket string) {
 	}
 }
 
+func isRemotePath(path string) bool {
+	return strings.Contains(path, ":")
+}
+
+func getBucketNameFromRemotePath(path string) string {
+	return strings.Split(path, ":")[0]
+}
+
+func getRemoteFilePath(path string) string {
+	// Remove bucket name and replace : with /
+	return "/" + strings.Join(strings.Split(path, ":")[1:], "/")
+}
+
 func main() {
 	//if _, err := utils.Parser.Parse(); err != nil {
 	//	switch flagsErr := err.(type) {
@@ -152,10 +165,23 @@ func main() {
 
 	sess := ConnectAws()
 
-	getBucketsList(sess)
+	fromPath := "clon-demo:files:go:main.go"
+	toPath := "./downloads/"
+
+	if isRemotePath(fromPath) {
+		bucketName := getBucketNameFromRemotePath(fromPath)
+		remoteFilePath := getRemoteFilePath(fromPath)
+		downloadFile(sess, bucketName, remoteFilePath, toPath)
+	} else {
+		bucketName := getBucketNameFromRemotePath(toPath)
+		remoteFilePath := getRemoteFilePath(toPath)
+		uploadFile(sess, bucketName, fromPath, remoteFilePath)
+	}
+
+	//getBucketsList(sess)
 	//getBucketItems(sess, "clon-demo")
-	//createBucket(sess, "clon-demo")
-	//uploadFile(sess, "clon-demo", "./main.go", "./")
+	//createBucket(sess, "clon-bohdan")
+	//uploadFile(sess, "clon-demo", "./main.go", "/")
 	//uploadFile(sess, "clon-demo", "./image.jpeg", "./img/")
 
 	//downloadFile(sess, "clon-demo", "./img/image.jpeg", "./")
