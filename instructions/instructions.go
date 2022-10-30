@@ -87,4 +87,20 @@ func Delete(sess *session.Session, bucket string, path string) {
 			return
 		}
 	}
+
+func Size(sess *session.Session, filePath string) {
+	if !services.IsRemotePath(filePath) {
+		fmt.Println("Please, enter remote file path")
+
+		return
+	}
+
+	bucketName := services.GetBucketNameFromRemotePath(filePath)
+	remoteFilePath := services.GetRemoteFilePath(filePath)
+
+	services.GetBucketFileSize(sess, bucketName, remoteFilePath)
+}
+
+func GetRemotes(sess *session.Session) {
+	services.GetBucketsList(sess)
 }
