@@ -45,3 +45,7 @@ func Move(sess *session.Session, fromPath string, toPath string) {
 		}
 	}
 }
+
+func ListElements(sess *session.Session, path string) {
+	services.GetBucketItems(sess, path)
+}
