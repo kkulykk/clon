@@ -15,12 +15,11 @@ var AccessKeyID string
 var SecretAccessKey string
 var MyRegion string
 
-// GetEnvWithKey : Get environmental variable value by name
+// GetEnvWithKey : get env value
 func GetEnvWithKey(key string) string {
 	return os.Getenv(key)
 }
 
-// LoadEnv : Set up environmental variables from .env file
 func LoadEnv() {
 	err := godotenv.Load(".env")
 
@@ -52,26 +51,25 @@ func ConnectAws() *session.Session {
 	return sess
 }
 
-// ExitErrorf : Helper function for better error handling
 func ExitErrorf(msg string, args ...interface{}) {
 	fmt.Fprintf(os.Stderr, msg+"\n", args...)
 	os.Exit(1)
 }
 
-// GetFileNameByPath : Return a file name from a given path
-func GetFileNameByPath(path string) string {
+func getFileNameByPath(path string) string {
 	splitPath := strings.Split(path, "/")
 	return splitPath[len(splitPath)-1]
 }
 
-// GetBucketNameByPath : Return a bucket name from a given path
-func GetBucketNameByPath(path string) string {
-	splitPath := strings.Split(path, "/")
-	return splitPath[0]
+func IsRemotePath(path string) bool {
+	return strings.Contains(path, ":")
 }
 
-// GetPath : Return a path without a bucket name/*
-func GetPath(path string) string {
-	splitPath := strings.Split(path, "/")
-	return strings.Join(splitPath[1:], "/")
+func GetBucketNameFromRemotePath(path string) string {
+	return strings.Split(path, ":")[0]
+}
+
+func GetRemoteFilePath(path string) string {
+	// Remove bucket name and replace : with /
+	return "/" + strings.Join(strings.Split(path, ":")[1:], "/")
 }
