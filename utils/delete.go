@@ -8,19 +8,18 @@ import (
 
 type DeleteCommand struct {
 	Args struct {
-		RemoteName string
-		Path       string
+		RemotePath string
 	} `positional-args:"yes"`
 }
 
 var deleteCommand DeleteCommand
 
 func (options *DeleteCommand) Execute([]string) error {
-	fmt.Printf("Deleting all the files under the path: %v\n\n", options.Args.Path)
+	fmt.Printf("Deleting all the files under the path: %v\n\n", options.Args.RemotePath)
 
 	sess := services.ConnectAws()
 
-	instructions.Delete(sess, options.Args.RemoteName, options.Args.Path)
+	instructions.Delete(sess, options.Args.RemotePath)
 
 	return nil
 }

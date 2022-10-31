@@ -164,8 +164,11 @@ func RemoveBucket(sess *session.Session, bucket string) error {
 	return nil
 }
 
-func DeleteFile(sess *session.Session, bucket string, fileName string) error {
+func DeleteFile(sess *session.Session, path string) error {
 	svc := s3.New(sess)
+
+	bucket := GetBucketNameFromRemotePath(path)
+	fileName := GetRemoteFilePath(path)
 
 	_, err := svc.DeleteObject(&s3.DeleteObjectInput{Bucket: aws.String(bucket), Key: aws.String(fileName)})
 	if err != nil {
@@ -202,8 +205,11 @@ func DeleteAll(sess *session.Session, bucket string) error {
 	return nil
 }
 
-func DeleteDirectory(sess *session.Session, bucket string, directory string) error {
+func DeleteDirectory(sess *session.Session, path string) error {
 	svc := s3.New(sess)
+
+	bucket := GetBucketNameFromRemotePath(path)
+	directory := GetRemoteFilePathPrefix(path)
 
 	iter := s3manager.NewDeleteListIterator(svc, &s3.ListObjectsInput{
 		Bucket: aws.String(bucket),
