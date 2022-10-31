@@ -7,16 +7,12 @@
 <div align="center">
     <img src="https://img.freepik.com/free-vector/cute-elephant-sitting-waving-hand-cartoon-vector-icon-illustration_138676-2220.jpg?w=2000" alt="Logo" width="200" height="auto">
 
-  <h3 align="center">Clon (an <a href="https://rclone.org/">RClone</a> analogue)</h3>
+  <h3 align="center">Clon (an <a href="https://rclone.org/">Rclone</a> analogue)</h3>
 
   <p align="center">
     Third-term <b>Operational Systems</b> course project 
     <br />
         <br />
-    <a href="https://kkulykk.github.io/distributed-botnet/" target="_blank">Go to website</a>
-    ·
-    <a href="https://youtu.be/ORd-A4XrvpA">View Demo</a>
-    ·
     <a href="https://github.com/kkulykk/clon/issues">Request Feature</a>
   </p>
     <br />
@@ -49,11 +45,9 @@
 ## About The Project
 
 
-A botnet is a collection of internet-connected devices, including personal computers (PCs), servers, mobile devices, and internet of things (IoT) devices infected and controlled by a common type of malware, often unbeknownst to their owner. However, the last part is not about our project, as it was created only for non-harmful educational purposes.
+The project is an attempt to create an Rclone analogue. Rclone is a command-line program to manage files on cloud storage. It is a feature-rich alternative to cloud vendors' web storage interfaces. Over 40 cloud storage products support rclone including S3 object stores, business & consumer file storage services, as well as standard transfer protocols. Rclone has powerful cloud equivalents to the unix commands `rsync`, `cp`, `mv`, `mount`, `ls`, `ncdu`, `tree`, `rm`, and `cat`. It is used at the command line, in scripts or via its API.
 
-The main goal of our project is to send requests to given targets so that we can see how well the targets handle such a minor DDoS attack and how efficient the performance of network services is.
-
-The core principle of work is also pretty straightforward: there is one central server and lots of bots (PCs or other devices) that might establish a connection with the server. The server performs some logic on gathering information on the target, how many bots are connected, what they have to do, and how to distribute the work between bots efficiently. Bots, on their side, get from the server the algorithm of what they have to do and perform those actions, periodically sending stats to the server. All the information is gathered, processed, and displayed on UI so that users can follow how the process is going on.
+In our implementation, called Clon (pronounced s-lon) we aimed to focus on intuitive command line interface with less configurable settings. As a result, we built a command-line tool to easily manage data on cloud storage and transfer files between local and remote storage instances.
 
 
 <p align="right">(<a href="#top">back to top</a>)</p>
