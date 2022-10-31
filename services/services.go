@@ -55,7 +55,10 @@ func ConnectAws() *session.Session {
 
 // ExitErrorf : Helper function for better error handling
 func ExitErrorf(msg string, args ...interface{}) {
-	fmt.Fprintf(os.Stderr, msg+"\n", args...)
+	_, err := fmt.Fprintf(os.Stderr, msg+"\n", args...)
+	if err != nil {
+		return
+	}
 	os.Exit(1)
 }
 
@@ -87,6 +90,7 @@ func GetRemoteFilePath(path string) string {
 	return "/" + GetRemoteFilePathPrefix(path)
 }
 
+// Confirm : Return true if a user confirms the action
 func Confirm() bool {
 	var input string
 
@@ -103,6 +107,7 @@ func Confirm() bool {
 	return false
 }
 
+// IsDirectory : Return true if a given path is a directory
 func IsDirectory(path string) bool {
 	return strings.HasSuffix(path, ":") || strings.HasSuffix(path, "/")
 }

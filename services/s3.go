@@ -9,6 +9,7 @@ import (
 	"os"
 )
 
+// DownloadFile : AWS S3 helper method to download a file from a bucket
 func DownloadFile(sess *session.Session, bucket string, remoteFilePath string, localDirectoryPath string) {
 	fileName := GetFileNameByPath(remoteFilePath)
 	localFilePath := localDirectoryPath + fileName
@@ -18,7 +19,12 @@ func DownloadFile(sess *session.Session, bucket string, remoteFilePath string, l
 		fmt.Println(err)
 	}
 
-	defer file.Close()
+	defer func(file *os.File) {
+		err := file.Close()
+		if err != nil {
+			ExitErrorf("Unable to close the file")
+		}
+	}(file)
 
 	downloader := s3manager.NewDownloader(sess)
 	numBytes, err := downloader.Download(file,
@@ -34,6 +40,7 @@ func DownloadFile(sess *session.Session, bucket string, remoteFilePath string, l
 	fmt.Println("Downloaded", file.Name(), numBytes, "bytes")
 }
 
+// UploadFile : AWS S3 helper method to upload new file to a bucket
 func UploadFile(sess *session.Session, bucket string, localFilePath string, remoteDirectoryPath string) {
 	fileName := GetFileNameByPath(localFilePath)
 	remoteFilePath := remoteDirectoryPath + fileName
@@ -43,7 +50,12 @@ func UploadFile(sess *session.Session, bucket string, localFilePath string, remo
 		ExitErrorf("Unable to open file %q, %v", err)
 	}
 
-	defer file.Close()
+	defer func(file *os.File) {
+		err := file.Close()
+		if err != nil {
+			ExitErrorf("Unable to close the file")
+		}
+	}(file)
 
 	uploader := s3manager.NewUploader(sess)
 	_, err = uploader.Upload(&s3manager.UploadInput{
@@ -60,6 +72,7 @@ func UploadFile(sess *session.Session, bucket string, localFilePath string, remo
 	fmt.Printf("Successfully uploaded %q to %q\n", remoteFilePath, bucket)
 }
 
+// CreateBucket : AWS S3 helper method to create a new bucket
 func CreateBucket(sess *session.Session, bucketName string) error {
 	svc := s3.New(sess)
 	_, err := svc.CreateBucket(&s3.CreateBucketInput{
@@ -86,6 +99,8 @@ func CreateBucket(sess *session.Session, bucketName string) error {
 	return nil
 }
 
+// DeleteBucketFile : AWS S3 helper method to delete file under the path in a bucket
+// TODO: Remove two delete file functions
 func DeleteBucketFile(sess *session.Session, bucket string, remoteFilePath string) {
 	svc := s3.New(sess)
 	_, err := svc.DeleteObject(&s3.DeleteObjectInput{Bucket: aws.String(bucket), Key: aws.String(remoteFilePath)})
@@ -104,6 +119,7 @@ func DeleteBucketFile(sess *session.Session, bucket string, remoteFilePath strin
 	}
 }
 
+// GetBucketsList : AWS S3 helper method to get list of available buckets
 func GetBucketsList(sess *session.Session) {
 	svc := s3.New(sess)
 	result, err := svc.ListBuckets(nil)
@@ -118,6 +134,7 @@ func GetBucketsList(sess *session.Session) {
 	}
 }
 
+// GetBucketItems : AWS S3 helper method to get info about items under the path
 func GetBucketItems(sess *session.Session, path string) {
 	svc := s3.New(sess)
 	bucket := GetBucketNameFromRemotePath(path)
@@ -142,6 +159,7 @@ func GetBucketItems(sess *session.Session, path string) {
 	}
 }
 
+// RemoveBucket : AWS S3 helper method to delete bucket instance
 func RemoveBucket(sess *session.Session, bucket string) error {
 	svc := s3.New(sess)
 
@@ -164,6 +182,7 @@ func RemoveBucket(sess *session.Session, bucket string) error {
 	return nil
 }
 
+// DeleteFile : AWS S3 helper method to delete file under the path in a bucket
 func DeleteFile(sess *session.Session, path string) error {
 	svc := s3.New(sess)
 
@@ -189,6 +208,7 @@ func DeleteFile(sess *session.Session, path string) error {
 	return nil
 }
 
+// DeleteAll : AWS S3 helper method to delete all data under the path in a bucket
 func DeleteAll(sess *session.Session, bucket string) error {
 	svc := s3.New(sess)
 
@@ -205,6 +225,7 @@ func DeleteAll(sess *session.Session, bucket string) error {
 	return nil
 }
 
+// DeleteDirectory : AWS S3 helper method to delete directory in a bucket
 func DeleteDirectory(sess *session.Session, path string) error {
 	svc := s3.New(sess)
 
@@ -225,6 +246,7 @@ func DeleteDirectory(sess *session.Session, path string) error {
 	return nil
 }
 
+// GetBucketFileSize : AWS S3 helper method to get a size of a file in a bucket
 func GetBucketFileSize(sess *session.Session, bucket string, remoteFilePath string) {
 	svc := s3.New(sess)
 

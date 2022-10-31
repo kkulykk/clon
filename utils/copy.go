@@ -29,8 +29,11 @@ func (options *CopyCommand) Execute(args []string) error {
 }
 
 func init() {
-	Parser.AddCommand("copy",
+	_, err := Parser.AddCommand("copy",
 		"Copy contents",
 		"Copy file(s) or directories from remote or local or vice versa. Use -f to force copy.",
 		&copyCommand)
+	if err != nil {
+		return
+	}
 }

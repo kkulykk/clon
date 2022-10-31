@@ -25,8 +25,11 @@ func (options *CreateRemoteCommand) Execute([]string) error {
 }
 
 func init() {
-	Parser.AddCommand("create-remote",
+	_, err := Parser.AddCommand("create-remote",
 		"Create a new remote with name",
 		"Create a new remote with name.",
 		&createRemoteCommand)
+	if err != nil {
+		return
+	}
 }
