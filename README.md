@@ -62,16 +62,10 @@ The core principle of work is also pretty straightforward: there is one central 
 
 ### Built With
 
-The technical side of the project is built various languages and frameworks:
-
-* Node.js and Go (Gin) to develop server and bots
-* ReactJS and Typescript for making user interface
-* AWS (EC2) for server deployment
-
+The technical side of the project is built using `GoLang` only.
 
 
 <p align="right">(<a href="#top">back to top</a>)</p>
-
 
 
 <!-- GETTING STARTED -->
@@ -79,26 +73,57 @@ The technical side of the project is built various languages and frameworks:
 
 Here we describe how to use the botnet.
 
-### To use the botnet
+### To use `Clon`
 
 
 1. Install Go if necessary
-2. You can press **"Start testing"** and the server would be active for new bots connections.
-3. To run bots, run process manager (```main.go``` in ```bots/processManagerCloud```)
-4. Once the bot is connected, you will see the stats on the dashboard updated every 10 seconds.
-5. After all the work is finished, you can press "Stop" to deactivate the server and "Exit" to log out of the dashboard.
+2. Set up your AWS S3 credentials in `.env` in order to establish connection with remote
+3. Build the project and run one of the available commands
+
+### Available commands
+
+#### about
+Usage: `clon [OPTIONS] about`
+
+Get detailed information about the Clon program.
+
+![Screen Recording 2022-10-31 at 08 30 06](https://user-images.githubusercontent.com/72144618/198945553-d36147af-554d-4215-8cf9-9cf3e288062d.gif)
+
+#### create-remote
+Usage: `clon [OPTIONS] create-remote RemoteName`
+
+Create a new remote with given name
+
+![Screen Recording 2022-10-31 at 08 55 15](https://user-images.githubusercontent.com/72144618/198949280-7c30e363-53b3-446e-87c1-59ed83303882.gif)
 
 
-### To use the botnet as a developer
+#### delete-remote
 
-_Below is an example of how you can download and change the source code._
+Usage: `clon [OPTIONS] delete-remote RemoteName`
 
-1. Clone the repo
-   ```sh
-   git clone https://github.com/kkulykk/distributed-botnet.git
-   ```
-2. Install Node.js and Go if needed and open the cloned project directory in IDE. 
-3. Go to the desired folder and file you want to work with and observe the source code of the project.
+Delete an existing remote
+
+![Screen Recording 2022-10-31 at 08 52 44](https://user-images.githubusercontent.com/72144618/198948965-82d0fd78-feb1-4141-acbd-8fe1d8762b13.gif)
+
+
+#### copy
+
+
+#### move
+
+
+#### delete
+
+#### ls
+Usage: `clon [OPTIONS] ls Path`
+
+Lists the objects in the source path to standard output in a human readable
+format with size path and update date.
+
+![Screen Recording 2022-10-31 at 08 58 21](https://user-images.githubusercontent.com/72144618/198949662-a52a4db7-374f-41b4-8322-94bc450b6be4.gif)
+
+
+#### size
 
 <p align="right">(<a href="#top">back to top</a>)</p>
 
@@ -107,19 +132,25 @@ _Below is an example of how you can download and change the source code._
 ## Roadmap
 
 
-- [x] Design the structure and define the logic of the server and bots
-- [x] Create server and bot (MVP) for debugging with Node.js
-- [x] Master Go to implement both bots and server
-- [x] Create UI for managing the botnet
-- [x] Establish SSH connection on local machines for the further bots updating
-- [x] Deploy server on AWS for testing and demonstration purposes
+- [x] Create a simple go project
+- [x] Add command line options parser
+- [x] Set up access with Amazon S3 API
+- [x] Add `create-remote` command
+- [x] Add `delete-remote` command
+- [x] Add `copy command` support
+- [x] Add `move` command support
+- [x] Add `delete` command support
+- [ ] ~~Add `mkdir` command support~~ (impossible as for now)
+- [x] Add `ls` command support 
+- [x] Add command for listing all remotes
+- [x] Add `size` command support
+- [ ] ~~Add `delete-file` command support~~ (was implemented inside `delete` command)
+- [x] Add `about` command support
 - [x] First presentation
-- [ ] ~~Adding fuctionality to test multiple targets~~
-- [x] Add `Requests Amount` and `Time attack` mode
-- [x] Remote bots updating using ~~SSH~~ Amazon S3
-- [x] Implementing bots in ~~C++~~ Go using goroutines
-- [x] Debugging and testing
-- [x] Final presentation
+- [ ] Add `sync` command support
+- [ ] Add `check` command support
+- [ ] Add multiple providers support
+- [ ] Add SHA-1 encryption
 
 
 <p align="right">(<a href="#top">back to top</a>)</p>
