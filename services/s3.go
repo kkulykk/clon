@@ -60,7 +60,7 @@ func UploadFile(sess *session.Session, bucket string, localFilePath string, remo
 	fmt.Printf("Successfully uploaded %q to %q\n", remoteFilePath, bucket)
 }
 
-func CreateBucket(sess *session.Session, bucketName string) {
+func CreateBucket(sess *session.Session, bucketName string) error {
 	svc := s3.New(sess)
 	_, err := svc.CreateBucket(&s3.CreateBucketInput{
 		Bucket: aws.String(bucketName),
@@ -76,6 +76,14 @@ func CreateBucket(sess *session.Session, bucketName string) {
 	err = svc.WaitUntilBucketExists(&s3.HeadBucketInput{
 		Bucket: aws.String(bucketName),
 	})
+
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("Successfully created remote %q\n", bucketName)
+
+	return nil
 }
 
 func DeleteBucketFile(sess *session.Session, bucket string, remoteFilePath string) {
@@ -150,6 +158,69 @@ func RemoveBucket(sess *session.Session, bucket string) error {
 	if err != nil {
 		return err
 	}
+
+	fmt.Printf("Successfully deleted remote %q\n", bucket)
+
+	return nil
+}
+
+func DeleteFile(sess *session.Session, path string) error {
+	svc := s3.New(sess)
+
+	bucket := GetBucketNameFromRemotePath(path)
+	fileName := GetRemoteFilePath(path)
+
+	_, err := svc.DeleteObject(&s3.DeleteObjectInput{Bucket: aws.String(bucket), Key: aws.String(fileName)})
+	if err != nil {
+		ExitErrorf("Unable to delete object %q from bucket %q, %v", fileName, bucket, err)
+	}
+
+	err = svc.WaitUntilObjectNotExists(&s3.HeadObjectInput{
+		Bucket: aws.String(bucket),
+		Key:    aws.String(fileName),
+	})
+
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("File %q successfully deleted\n", fileName)
+
+	return nil
+}
+
+func DeleteAll(sess *session.Session, bucket string) error {
+	svc := s3.New(sess)
+
+	iter := s3manager.NewDeleteListIterator(svc, &s3.ListObjectsInput{
+		Bucket: aws.String(bucket),
+	})
+
+	if err := s3manager.NewBatchDeleteWithClient(svc).Delete(aws.BackgroundContext(), iter); err != nil {
+		ExitErrorf("Unable to delete objects from bucket %q, %v", bucket, err)
+	}
+
+	fmt.Printf("Deleted all object(s) from bucket: %s\n", bucket)
+
+	return nil
+}
+
+func DeleteDirectory(sess *session.Session, path string) error {
+	svc := s3.New(sess)
+
+	bucket := GetBucketNameFromRemotePath(path)
+	directory := GetRemoteFilePathPrefix(path)
+
+	iter := s3manager.NewDeleteListIterator(svc, &s3.ListObjectsInput{
+		Bucket: aws.String(bucket),
+		Prefix: aws.String(directory),
+	})
+
+	if err := s3manager.NewBatchDeleteWithClient(svc).Delete(aws.BackgroundContext(), iter); err != nil {
+		ExitErrorf("Unable to delete objects under given directory: %q, %v", directory, err)
+	}
+
+	fmt.Printf("Deleted all object(s) from directory: %q\n", directory)
 
 	return nil
 }

@@ -86,3 +86,23 @@ func GetRemoteFilePath(path string) string {
 	// Remove bucket name and replace : with /
 	return "/" + GetRemoteFilePathPrefix(path)
 }
+
+func Confirm() bool {
+	var input string
+
+	fmt.Printf("Do you want to continue with this operation? [y|n]: ")
+	_, err := fmt.Scanln(&input)
+	if err != nil {
+		panic(err)
+	}
+	input = strings.ToLower(input)
+
+	if input == "y" || input == "yes" {
+		return true
+	}
+	return false
+}
+
+func IsDirectory(path string) bool {
+	return strings.HasSuffix(path, ":") || strings.HasSuffix(path, "/")
+}
