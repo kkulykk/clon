@@ -108,6 +108,14 @@ Delete an existing remote
 
 #### delete
 
+Usage: `clon [OPTIONS] delete RemotePath`
+
+Lists the objects in the source path to standard output in a human readable
+format with size path and update date.
+
+![Screen Recording 2022-10-31 at 10 00 49](https://user-images.githubusercontent.com/72144618/198960291-0076a915-be17-4fa9-aa86-6d2e165152f3.gif)
+
+
 #### ls
 Usage: `clon [OPTIONS] ls Path`
 
