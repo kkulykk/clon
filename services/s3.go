@@ -60,7 +60,7 @@ func UploadFile(sess *session.Session, bucket string, localFilePath string, remo
 	fmt.Printf("Successfully uploaded %q to %q\n", remoteFilePath, bucket)
 }
 
-func CreateBucket(sess *session.Session, bucketName string) {
+func CreateBucket(sess *session.Session, bucketName string) error {
 	svc := s3.New(sess)
 	_, err := svc.CreateBucket(&s3.CreateBucketInput{
 		Bucket: aws.String(bucketName),
@@ -76,6 +76,14 @@ func CreateBucket(sess *session.Session, bucketName string) {
 	err = svc.WaitUntilBucketExists(&s3.HeadBucketInput{
 		Bucket: aws.String(bucketName),
 	})
+
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("Successfully created remote %q\n", bucketName)
+
+	return nil
 }
 
 func DeleteBucketFile(sess *session.Session, bucket string, remoteFilePath string) {
@@ -151,6 +159,8 @@ func RemoveBucket(sess *session.Session, bucket string) error {
 		return err
 	}
 
+	fmt.Printf("Successfully deleted remote %q\n", bucket)
+
 	return nil
 }
 
@@ -207,6 +217,7 @@ func DeleteDirectory(sess *session.Session, bucket string, directory string) err
 	fmt.Printf("Deleted all object(s) from directory: %q\n", directory)
 
 	return nil
+}
 
 func GetBucketFileSize(sess *session.Session, bucket string, remoteFilePath string) {
 	svc := s3.New(sess)
