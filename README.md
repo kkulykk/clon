@@ -65,14 +65,15 @@ The technical side of the project is built using `GoLang` only.
 <!-- GETTING STARTED -->
 ## Usage
 
-Here we describe how to use the botnet.
+Here we describe how to use the program.
 
 ### To use `Clon`
 
 
 1. Install Go if necessary
 2. Set up your AWS S3 credentials in `.env` in order to establish connection with remote
-3. Build the project and run one of the available commands
+3. Install the required dependincies
+4. Build the project and run one of the available commands
 
 ### Available commands
 
@@ -90,21 +91,30 @@ Create a new remote with given name
 
 ![Screen Recording 2022-10-31 at 08 55 15](https://user-images.githubusercontent.com/72144618/198949280-7c30e363-53b3-446e-87c1-59ed83303882.gif)
 
-
 #### delete-remote
 
 Usage: `clon [OPTIONS] delete-remote RemoteName`
 
-Delete an existing remote
+Delete an existing remote.
 
 ![Screen Recording 2022-10-31 at 08 52 44](https://user-images.githubusercontent.com/72144618/198948965-82d0fd78-feb1-4141-acbd-8fe1d8762b13.gif)
 
-
 #### copy
 
+Usage: `clon [OPTIONS] copy [copy-OPTIONS] FromPath ToPath`
+
+Copy file(s) or directories from remote or local or vice versa. Use -f to force
+copy.
+
+![Screen Recording 2022-10-31 at 19 55 26](https://user-images.githubusercontent.com/72144618/199076537-47e55511-1c24-400b-88d6-3449d125645e.gif)
 
 #### move
 
+Usage: `clon [OPTIONS] move FromPath ToPath`
+
+Moves the contents of the source directory to the destination directory
+
+![Screen Recording 2022-10-31 at 19 57 39](https://user-images.githubusercontent.com/72144618/199077076-a2a83ccd-7270-4da1-a3bc-5f1edfbdc1de.gif)
 
 #### delete
 
@@ -115,17 +125,23 @@ format with size path and update date.
 
 ![Screen Recording 2022-10-31 at 10 00 49](https://user-images.githubusercontent.com/72144618/198960291-0076a915-be17-4fa9-aa86-6d2e165152f3.gif)
 
-
 #### ls
+
 Usage: `clon [OPTIONS] ls Path`
 
-Lists the objects in the source path to standard output in a human readable
-format with size path and update date.
+Remove the files in path.
 
 ![Screen Recording 2022-10-31 at 08 58 21](https://user-images.githubusercontent.com/72144618/198949662-a52a4db7-374f-41b4-8322-94bc450b6be4.gif)
 
 
 #### size
+
+Usage: `clon [OPTIONS] size FilePath`
+
+Return size of file in bytes.
+
+![Screen Recording 2022-10-31 at 20 02 35](https://user-images.githubusercontent.com/72144618/199077871-267e9c93-62d8-4e49-b20c-8a1e177326db.gif)
+
 
 <p align="right">(<a href="#top">back to top</a>)</p>
 
