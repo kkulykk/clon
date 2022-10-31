@@ -26,7 +26,7 @@ func (options *DeleteCommand) Execute([]string) error {
 
 func init() {
 	Parser.AddCommand("delete",
-		"List the objects in the path with size, path and update date",
-		"Lists the objects in the source path to standard output in a human readable format with size path and update date.",
+		"Remove the files in path",
+		"Remove the files in path.",
 		&deleteCommand)
 }
