@@ -20,8 +20,11 @@ func (options *AboutCommand) Execute([]string) error {
 }
 
 func init() {
-	Parser.AddCommand("about",
+	_, err := Parser.AddCommand("about",
 		"Information about the program",
 		"Get detailed information about the Clon program.",
 		&aboutCommand)
+	if err != nil {
+		return
+	}
 }

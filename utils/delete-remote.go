@@ -25,8 +25,11 @@ func (options *DeleteRemoteCommand) Execute([]string) error {
 }
 
 func init() {
-	Parser.AddCommand("delete-remote",
+	_, err := Parser.AddCommand("delete-remote",
 		"Delete an existing remote",
 		"Delete an existing remote",
 		&deleteRemoteCommand)
+	if err != nil {
+		return
+	}
 }

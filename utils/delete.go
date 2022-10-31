@@ -25,8 +25,11 @@ func (options *DeleteCommand) Execute([]string) error {
 }
 
 func init() {
-	Parser.AddCommand("delete",
+	_, err := Parser.AddCommand("delete",
 		"Remove the files in path",
 		"Remove the files in path.",
 		&deleteCommand)
+	if err != nil {
+		return
+	}
 }

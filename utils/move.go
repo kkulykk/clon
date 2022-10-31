@@ -28,9 +28,8 @@ func (options *MoveCommand) Execute([]string) error {
 }
 
 func init() {
-	// TODO! Add beautiful desciptions
 	Parser.AddCommand("move",
-		"Move files",
-		"Move files",
+		"Move files from source to dest",
+		"Moves the contents of the source directory to the destination directory",
 		&moveCommand)
 }

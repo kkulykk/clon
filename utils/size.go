@@ -25,8 +25,11 @@ func (options *SizeCommand) Execute([]string) error {
 }
 
 func init() {
-	Parser.AddCommand("size",
+	_, err := Parser.AddCommand("size",
 		"Return size of file in bytes",
 		"Return size of file in bytes",
 		&sizeCommand)
+	if err != nil {
+		return
+	}
 }

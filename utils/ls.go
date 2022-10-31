@@ -25,8 +25,11 @@ func (options *LsCommand) Execute([]string) error {
 }
 
 func init() {
-	Parser.AddCommand("ls",
+	_, err := Parser.AddCommand("ls",
 		"List the objects in the path with size, path and update date",
 		"Lists the objects in the source path to standard output in a human readable format with size path and update date.",
 		&lsCommand)
+	if err != nil {
+		return
+	}
 }

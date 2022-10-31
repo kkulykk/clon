@@ -12,7 +12,7 @@ type RemotesCommand struct {
 var remotesCommand RemotesCommand
 
 func (options *RemotesCommand) Execute([]string) error {
-	fmt.Println("Retrieving list of available remotes ...\n")
+	fmt.Println("Retrieving list of available remotes...")
 	fmt.Println("Remotes:")
 
 	sess := services.ConnectAws()
@@ -23,8 +23,11 @@ func (options *RemotesCommand) Execute([]string) error {
 }
 
 func init() {
-	Parser.AddCommand("remotes",
+	_, err := Parser.AddCommand("remotes",
 		"Get list of available remotes",
 		"Get list of available remotes",
 		&remotesCommand)
+	if err != nil {
+		return
+	}
 }

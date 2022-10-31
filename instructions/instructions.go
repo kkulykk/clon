@@ -8,14 +8,23 @@ import (
 	"os"
 )
 
+// CreateRemote : Create a remote entity in the cloud
 func CreateRemote(sess *session.Session, remoteName string) {
-	services.CreateBucket(sess, remoteName)
+	err := services.CreateBucket(sess, remoteName)
+	if err != nil {
+		return
+	}
 }
 
+// DeleteRemote : Delete a remote entity in the cloud
 func DeleteRemote(sess *session.Session, remoteName string) {
-	services.RemoveBucket(sess, remoteName)
+	err := services.RemoveBucket(sess, remoteName)
+	if err != nil {
+		return
+	}
 }
 
+// Copy : Helper function to copy files between a remote entity in the cloud and local machine
 func Copy(sess *session.Session, fromPath string, toPath string) {
 	if services.IsRemotePath(fromPath) {
 		bucketName := services.GetBucketNameFromRemotePath(fromPath)
@@ -30,6 +39,7 @@ func Copy(sess *session.Session, fromPath string, toPath string) {
 	}
 }
 
+// Move : Helper function to move files between a remote entity in the cloud and local machine
 func Move(sess *session.Session, fromPath string, toPath string) {
 	Copy(sess, fromPath, toPath)
 
@@ -47,10 +57,12 @@ func Move(sess *session.Session, fromPath string, toPath string) {
 	}
 }
 
+// ListElements : Helper function to retrieve file data from a remote entity in the cloud
 func ListElements(sess *session.Session, path string) {
 	services.GetBucketItems(sess, path)
 }
 
+// Delete : Helper function to remove file(s) from a remote entity in the cloud
 func Delete(sess *session.Session, path string) {
 
 	if services.GetBucketNameFromRemotePath(path) == "" {
@@ -91,6 +103,7 @@ func Delete(sess *session.Session, path string) {
 	}
 }
 
+// Size : Helper function to retrieve file(s) size from a remote entity in the cloud
 func Size(sess *session.Session, filePath string) {
 	if !services.IsRemotePath(filePath) {
 		fmt.Println("Please, enter remote file path")
@@ -104,6 +117,7 @@ func Size(sess *session.Session, filePath string) {
 	services.GetBucketFileSize(sess, bucketName, remoteFilePath)
 }
 
+// GetRemotes : Helper function to retrieve all remote entities from the cloud
 func GetRemotes(sess *session.Session) {
 	services.GetBucketsList(sess)
 }
