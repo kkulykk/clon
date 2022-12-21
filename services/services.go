@@ -1,6 +1,7 @@
 package services
 
 import (
+	"crypto/md5"
 	"fmt"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
@@ -8,12 +9,18 @@ import (
 	"github.com/joho/godotenv"
 	"log"
 	"os"
+	"path/filepath"
 	"strings"
 )
 
 var AccessKeyID string
 var SecretAccessKey string
 var MyRegion string
+
+type CheckFilesResult struct {
+	FilesToUpload []string
+	FilesToDelete []string
+}
 
 // GetEnvWithKey : Get environmental variable value by name
 func GetEnvWithKey(key string) string {
@@ -110,4 +117,98 @@ func Confirm() bool {
 // IsDirectory : Return true if a given path is a directory
 func IsDirectory(path string) bool {
 	return strings.HasSuffix(path, ":") || strings.HasSuffix(path, "/")
+}
+
+func difference(slice1 []string, slice2 []string) []string {
+	var diff []string
+
+	// Loop two times, first to find slice1 strings not in slice2,
+	// second loop to find slice2 strings not in slice1
+	for i := 0; i < 2; i++ {
+		for _, s1 := range slice1 {
+			found := false
+			for _, s2 := range slice2 {
+				if s1 == s2 {
+					found = true
+					break
+				}
+			}
+			// String not found. We add it to return slice
+			if !found {
+				diff = append(diff, s1)
+			}
+		}
+		// Swap the slices, only if it was the first loop
+		if i == 0 {
+			slice1, slice2 = slice2, slice1
+		}
+	}
+
+	return diff
+}
+
+// CheckFiles : Iterate through all the files and compare checksums
+func CheckFiles(remoteItems map[string]string, paths string) *CheckFilesResult {
+	var filesToUpdate []string
+	var filesToDelete []string
+	var actualFiles []string
+
+	remoteFiles := make([]string, 0, len(remoteItems))
+
+	for k := range remoteItems {
+		remoteFiles = append(remoteFiles, k)
+	}
+
+	var numfiles int
+	result := CheckFilesResult{}
+
+	fmt.Println(paths)
+
+	filepath.Walk(paths, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		if !info.IsDir() {
+			numfiles++
+			relativeFile := strings.Replace(path, paths, "", 1)
+			fmt.Println(remoteItems)
+			checksumRemote, _ := remoteItems[relativeFile]
+
+			validateChecksum(path, checksumRemote, filesToUpdate, actualFiles)
+		}
+
+		return nil
+	})
+
+	filesToDelete = difference(remoteFiles, append(actualFiles, filesToUpdate...))
+
+	fmt.Println(filesToUpdate)
+	fmt.Println(filesToDelete)
+	fmt.Println(actualFiles)
+
+	result.FilesToUpload = filesToUpdate
+	result.FilesToDelete = filesToDelete
+
+	return &result
+}
+
+func validateChecksum(filename string, checksumRemote string, filesToUpdate []string, actualFiles []string) {
+
+	if checksumRemote == "" {
+		filesToUpdate = append(filesToUpdate, filename)
+		return
+	}
+
+	contents, err := os.ReadFile(filename)
+	if err == nil {
+		sum := md5.Sum(contents)
+		sumString := fmt.Sprintf("%x", sum)
+		if sumString != checksumRemote {
+			filesToUpdate = append(filesToUpdate, filename)
+			return
+		} else {
+			actualFiles = append(actualFiles, filename)
+			return
+		}
+	}
 }

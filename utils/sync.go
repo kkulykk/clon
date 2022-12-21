@@ -7,12 +7,19 @@ import (
 type SyncCommand struct {
 	Soft  bool `short:"s" long:"soft" description:"Soft syncing of files"`
 	Force bool `short:"f" long:"force" description:"Force syncing of files"`
+	Args  struct {
+		SyncPath string
+	} `positional-args:"yes" required:"1"`
 }
 
 var syncCommand SyncCommand
 
 func (x *SyncCommand) Execute(args []string) error {
-	fmt.Printf("Syncing (force=%v): %#v\n", x.Force, args)
+
+	//sess := services.ConnectAws()
+	//instructions.Sync(sess, "clon-test", x.Args.SyncPath)
+
+	fmt.Printf("Synced (force=%v): %#v\n", x.Soft, args)
 	return nil
 }
 

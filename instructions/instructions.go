@@ -8,6 +8,11 @@ import (
 	"os"
 )
 
+type CheckFilesResult struct {
+	filesToUpload []string
+	filesToDelete []string
+}
+
 // CreateRemote : Create a remote entity in the cloud
 func CreateRemote(sess *session.Session, remoteName string) {
 	err := services.CreateBucket(sess, remoteName)
@@ -120,4 +125,35 @@ func Size(sess *session.Session, filePath string) {
 // GetRemotes : Helper function to retrieve all remote entities from the cloud
 func GetRemotes(sess *session.Session) {
 	services.GetBucketsList(sess)
+}
+
+// Check : Helper function to check if local and remote directories are up-to-date
+func Check(sess *session.Session, bucket string, path string) {
+	remoteFiles, err := services.GetAwsS3ItemMap(sess, bucket)
+	files := services.CheckFiles(remoteFiles, path)
+
+	if len(files.FilesToDelete) == 0 && len(files.FilesToUpload) == 0 {
+		fmt.Println("Local and remote storages are up to date.")
+	}
+
+	if len(files.FilesToDelete) > 0 && len(files.FilesToUpload) == 0 {
+		fmt.Println("No files need to be updated. The following files need to be deleted on remote: ")
+		fmt.Println(files.FilesToDelete)
+	}
+
+	if len(files.FilesToUpload) > 0 && len(files.FilesToDelete) == 0 {
+		fmt.Println("No files need to be deleted on remote. The following files need to be updated on remote: ")
+		fmt.Println(files.FilesToUpload)
+	}
+
+	if len(files.FilesToUpload) > 0 && len(files.FilesToDelete) > 0 {
+		fmt.Println("The following files need to be updated on remote: ")
+		fmt.Println(files.FilesToUpload)
+		fmt.Println("The following files need to be deleted on remote: ")
+		fmt.Println(files.FilesToUpload)
+	}
+
+	if err != nil {
+		return
+	}
 }

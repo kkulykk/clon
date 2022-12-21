@@ -7,6 +7,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/aws/aws-sdk-go/service/s3/s3manager"
 	"os"
+	"strings"
 )
 
 // DownloadFile : AWS S3 helper method to download a file from a bucket
@@ -261,4 +262,33 @@ func GetBucketFileSize(sess *session.Session, bucket string, remoteFilePath stri
 	}
 
 	fmt.Printf("Size of %q (bucket: %q): %v bytes\n", remoteFilePath, bucket, aws.Int64Value(result.ContentLength))
+}
+
+/*
+*
+getAwsS3ItemMap constructs and returns a map of keys (relative filenames)
+to checksums for the given bucket-configured s3 service.
+It is assumed  that the objects have not been multipart-uploaded,
+which will change the checksum.
+*/
+func GetAwsS3ItemMap(sess *session.Session, bucket string) (map[string]string, error) {
+	svc := s3.New(sess)
+
+	var loi s3.ListObjectsInput
+	loi.SetBucket(bucket)
+
+	obj, err := svc.ListObjects(&loi)
+
+	var items = make(map[string]string)
+
+	if err == nil {
+		for _, s3obj := range obj.Contents {
+			// Here we get the checksum
+			eTag := strings.Trim(*(s3obj.ETag), "\"")
+			items[*(s3obj.Key)] = eTag
+		}
+		return items, nil
+	}
+
+	return nil, err
 }
