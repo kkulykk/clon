@@ -1,12 +1,15 @@
 package services
 
 import (
+	"crypto/md5"
 	"fmt"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/aws/aws-sdk-go/service/s3/s3manager"
+	"io/ioutil"
 	"os"
+	"strings"
 )
 
 // DownloadFile : AWS S3 helper method to download a file from a bucket
@@ -38,6 +41,57 @@ func DownloadFile(sess *session.Session, bucket string, remoteFilePath string, l
 	}
 
 	fmt.Println("Downloaded", file.Name(), numBytes, "bytes")
+}
+
+// UploadFileWithChecksum : AWS S3 helper method to upload new file to a bucket with upload file integrity check (checksum)
+func UploadFileWithChecksum(sess *session.Session, bucket string, localFilePath string, remoteDirectoryPath string) {
+	svc := s3.New(sess)
+	fileName := GetFileNameByPath(localFilePath)
+	remoteFilePath := remoteDirectoryPath + fileName
+	file, err := os.Open(localFilePath)
+
+	if err != nil {
+		ExitErrorf("Unable to open file %q, %v", err)
+	}
+
+	defer func(file *os.File) {
+		err := file.Close()
+		if err != nil {
+			ExitErrorf("Unable to close the file")
+		}
+	}(file)
+
+	uploader := s3manager.NewUploader(sess)
+	_, err = uploader.Upload(&s3manager.UploadInput{
+		Bucket: aws.String(bucket),
+		Key:    aws.String(remoteFilePath),
+		Body:   file,
+	})
+
+	if err != nil {
+		// Print the error and exit.
+		ExitErrorf("Unable to upload %q to %q, %v", remoteFilePath, bucket, err)
+	}
+
+	headObj := s3.HeadObjectInput{
+		Bucket: aws.String(bucket),
+		Key:    aws.String(remoteFilePath),
+	}
+	s3obj, err := svc.HeadObject(&headObj)
+
+	if err != nil {
+		ExitErrorf("Unable to get checksum of uploaded file")
+	}
+
+	fileContent, err := ioutil.ReadFile(localFilePath)
+	remoteFileChecksum := strings.Trim(*(s3obj.ETag), "\"")
+	localFileChecksum := fmt.Sprintf("%x", md5.Sum(fileContent))
+
+	if localFileChecksum != remoteFileChecksum {
+		ExitErrorf("Checksum mismatch of file %q on %q bucket", remoteFilePath, bucket)
+	}
+
+	fmt.Printf("Successfully uploaded %q to %q\n", remoteFilePath, bucket)
 }
 
 // UploadFile : AWS S3 helper method to upload new file to a bucket
