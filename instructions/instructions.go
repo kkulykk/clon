@@ -2,10 +2,13 @@ package instructions
 
 import (
 	"clon/services"
+	"crypto/md5"
 	"fmt"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"log"
 	"os"
+	"path/filepath"
+	"strings"
 )
 
 type CheckFilesResult struct {
@@ -128,32 +131,92 @@ func GetRemotes(sess *session.Session) {
 }
 
 // Check : Helper function to check if local and remote directories are up-to-date
-func Check(sess *session.Session, bucket string, path string) {
-	remoteFiles, err := services.GetAwsS3ItemMap(sess, bucket)
-	files := services.CheckFiles(remoteFiles, path)
+// func Check(sess *session.Session, bucket string, path string) {
+func Check(sess *session.Session) {
+	var filesToUpdate []string
+	//var filesToDelete []string
+	remoteFiles, _ := services.GetAwsS3ItemMap(sess, "clon-demo", "clon-demo")
+	remoteFilesPaths := make([]string, len(remoteFiles))
 
-	if len(files.FilesToDelete) == 0 && len(files.FilesToUpload) == 0 {
-		fmt.Println("Local and remote storages are up to date.")
+	i := 0
+	for remotePath := range remoteFiles {
+		remoteFilesPaths[i] = remotePath
+		i++
 	}
 
-	if len(files.FilesToDelete) > 0 && len(files.FilesToUpload) == 0 {
-		fmt.Println("No files need to be updated. The following files need to be deleted on remote: ")
-		fmt.Println(files.FilesToDelete)
-	}
+	fmt.Println("remoteFilesPaths", remoteFilesPaths)
 
-	if len(files.FilesToUpload) > 0 && len(files.FilesToDelete) == 0 {
-		fmt.Println("No files need to be deleted on remote. The following files need to be updated on remote: ")
-		fmt.Println(files.FilesToUpload)
-	}
+	filepath.Walk("./remote", func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
 
-	if len(files.FilesToUpload) > 0 && len(files.FilesToDelete) > 0 {
-		fmt.Println("The following files need to be updated on remote: ")
-		fmt.Println(files.FilesToUpload)
-		fmt.Println("The following files need to be deleted on remote: ")
-		fmt.Println(files.FilesToUpload)
-	}
+		if !info.IsDir() {
+			fmt.Println("path", path)
 
-	if err != nil {
-		return
-	}
+			contents, err := os.ReadFile(path)
+
+			if err == nil {
+				localFilePath := strings.Replace(path, "remote/", "", 1)
+				localFileMd5Sum := md5.Sum(contents)
+				localFileChecksum := fmt.Sprintf("%x", localFileMd5Sum)
+
+				if localFileChecksum != remoteFiles[localFilePath] {
+					filesToUpdate = append(filesToUpdate, path)
+				}
+
+				filteredRemoteFilesPaths := make([]string, 0)
+
+				for _, remoteFilePath := range remoteFilesPaths {
+					//fmt.Println("path", path)
+					//fmt.Println("remoteFilePath", remoteFilePath)
+
+					// Should remote /remote from the beginning of the local path to conform with remote path
+
+					if localFilePath != remoteFilePath {
+						filteredRemoteFilesPaths = append(filteredRemoteFilesPaths, remoteFilePath)
+					}
+				}
+
+				remoteFilesPaths = filteredRemoteFilesPaths
+			} else {
+				fmt.Println("Error ReadFile")
+			}
+		}
+
+		return nil
+	})
+
+	fmt.Println("filesToUpdate", filesToUpdate)
+	fmt.Println("filesToDelete", remoteFilesPaths)
+
+	return
+
+	//remoteFiles, err := services.GetAwsS3ItemMap(sess, bucket)
+	//files := services.CheckFiles(remoteFiles, path)
+	//
+	//if len(files.FilesToDelete) == 0 && len(files.FilesToUpload) == 0 {
+	//	fmt.Println("Local and remote storages are up to date.")
+	//}
+	//
+	//if len(files.FilesToDelete) > 0 && len(files.FilesToUpload) == 0 {
+	//	fmt.Println("No files need to be updated. The following files need to be deleted on remote: ")
+	//	fmt.Println(files.FilesToDelete)
+	//}
+	//
+	//if len(files.FilesToUpload) > 0 && len(files.FilesToDelete) == 0 {
+	//	fmt.Println("No files need to be deleted on remote. The following files need to be updated on remote: ")
+	//	fmt.Println(files.FilesToUpload)
+	//}
+	//
+	//if len(files.FilesToUpload) > 0 && len(files.FilesToDelete) > 0 {
+	//	fmt.Println("The following files need to be updated on remote: ")
+	//	fmt.Println(files.FilesToUpload)
+	//	fmt.Println("The following files need to be deleted on remote: ")
+	//	fmt.Println(files.FilesToUpload)
+	//}
+	//
+	//if err != nil {
+	//	return
+	//}
 }

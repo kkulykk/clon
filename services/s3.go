@@ -271,11 +271,13 @@ to checksums for the given bucket-configured s3 service.
 It is assumed  that the objects have not been multipart-uploaded,
 which will change the checksum.
 */
-func GetAwsS3ItemMap(sess *session.Session, bucket string) (map[string]string, error) {
+func GetAwsS3ItemMap(sess *session.Session, bucket string, remotePath string) (map[string]string, error) {
 	svc := s3.New(sess)
 
-	var loi s3.ListObjectsInput
-	loi.SetBucket(bucket)
+	loi := s3.ListObjectsInput{
+		Bucket: aws.String(bucket),
+		Prefix: aws.String(GetRemoteFilePathPrefix(remotePath)),
+	}
 
 	obj, err := svc.ListObjects(&loi)
 
@@ -283,9 +285,11 @@ func GetAwsS3ItemMap(sess *session.Session, bucket string) (map[string]string, e
 
 	if err == nil {
 		for _, s3obj := range obj.Contents {
-			// Here we get the checksum
-			eTag := strings.Trim(*(s3obj.ETag), "\"")
-			items[*(s3obj.Key)] = eTag
+			if !strings.HasSuffix(*(s3obj.Key), "/") {
+				// Here we get the checksum
+				eTag := strings.Trim(*(s3obj.ETag), "\"")
+				items[*(s3obj.Key)] = eTag
+			}
 		}
 		return items, nil
 	}
