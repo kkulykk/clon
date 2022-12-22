@@ -5,6 +5,7 @@ import (
 	"crypto/md5"
 	"fmt"
 	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/fatih/color"
 	"log"
 	"os"
 	"path/filepath"
@@ -133,9 +134,26 @@ func GetRemotes(sess *session.Session) {
 // Check : Helper function to check if local and remote directories are up-to-date
 // func Check(sess *session.Session, bucket string, path string) {
 func Check(sess *session.Session) {
+	bucket := "clon-demo"
+	remotePath := "clon-demo"
+	localPath := "./remote"
+	remotePathPrefix := services.GetRemoteFilePathPrefix(remotePath)
+	localPathPrefix := localPath
+
+	if !strings.HasSuffix(remotePathPrefix, "/") {
+		remotePathPrefix = remotePathPrefix + "/"
+	}
+
+	if !strings.HasSuffix(localPathPrefix, "/") {
+		localPathPrefix = localPathPrefix + "/"
+	}
+	// Remove ./ from local file prefix if its path starts with it
+	if strings.HasPrefix(localPathPrefix, "./") {
+		localPathPrefix = strings.Replace(localPathPrefix, "./", "", 1)
+	}
+
 	var filesToUpdate []string
-	//var filesToDelete []string
-	remoteFiles, _ := services.GetAwsS3ItemMap(sess, "clon-demo", "clon-demo")
+	remoteFiles, _ := services.GetAwsS3ItemMap(sess, bucket, remotePath)
 	remoteFilesPaths := make([]string, len(remoteFiles))
 
 	i := 0
@@ -144,51 +162,63 @@ func Check(sess *session.Session) {
 		i++
 	}
 
-	fmt.Println("remoteFilesPaths", remoteFilesPaths)
-
-	filepath.Walk("./remote", func(path string, info os.FileInfo, err error) error {
+	filepath.Walk(localPath, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
 		}
 
 		if !info.IsDir() {
-			fmt.Println("path", path)
-
 			contents, err := os.ReadFile(path)
 
 			if err == nil {
-				localFilePath := strings.Replace(path, "remote/", "", 1)
+				// Should remote /remote from the beginning of the local path to conform with remote path
+				localFilePathOnRemote := strings.Replace(path, localPathPrefix, "", 1)
 				localFileMd5Sum := md5.Sum(contents)
 				localFileChecksum := fmt.Sprintf("%x", localFileMd5Sum)
 
-				if localFileChecksum != remoteFiles[localFilePath] {
+				if localFileChecksum != remoteFiles[localFilePathOnRemote] {
 					filesToUpdate = append(filesToUpdate, path)
 				}
 
 				filteredRemoteFilesPaths := make([]string, 0)
 
 				for _, remoteFilePath := range remoteFilesPaths {
-					//fmt.Println("path", path)
-					//fmt.Println("remoteFilePath", remoteFilePath)
-
-					// Should remote /remote from the beginning of the local path to conform with remote path
-
-					if localFilePath != remoteFilePath {
+					if localFilePathOnRemote != remoteFilePath {
 						filteredRemoteFilesPaths = append(filteredRemoteFilesPaths, remoteFilePath)
 					}
 				}
 
 				remoteFilesPaths = filteredRemoteFilesPaths
 			} else {
-				fmt.Println("Error ReadFile")
+				services.ExitErrorf("Error reading file %q", path)
 			}
 		}
 
 		return nil
 	})
 
-	fmt.Println("filesToUpdate", filesToUpdate)
-	fmt.Println("filesToDelete", remoteFilesPaths)
+	//fmt.Println("filesToUpdate", filesToUpdate)
+	//fmt.Println("filesToDelete", remoteFilesPaths)
+
+	if len(filesToUpdate) > 0 {
+		fmt.Println("Files to update:\n")
+
+		for _, fileToUpdate := range filesToUpdate {
+			color.Green("	update: %q", fileToUpdate)
+		}
+
+		fmt.Println()
+	}
+
+	if len(remoteFilesPaths) > 0 {
+		fmt.Println("Files to delete:")
+
+		for _, fileToDelete := range remoteFilesPaths {
+			color.Red("	delete: %q", fileToDelete)
+		}
+
+		fmt.Println()
+	}
 
 	return
 
