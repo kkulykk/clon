@@ -274,6 +274,12 @@ which will change the checksum.
 func GetAwsS3ItemMap(sess *session.Session, bucket string, remotePath string) (map[string]string, error) {
 	svc := s3.New(sess)
 
+	remotePathPrefix := GetRemoteFilePathPrefix(remotePath)
+
+	if !strings.HasSuffix(remotePathPrefix, "/") {
+		remotePathPrefix = remotePathPrefix + "/"
+	}
+
 	loi := s3.ListObjectsInput{
 		Bucket: aws.String(bucket),
 		Prefix: aws.String(GetRemoteFilePathPrefix(remotePath)),

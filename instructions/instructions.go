@@ -143,10 +143,10 @@ func Check(sess *session.Session, localPath string, remotePath string) {
 	}
 
 	if len(files.FilesToUpload) > 0 {
-		fmt.Println("Files to update:")
+		fmt.Println("Files to upload:")
 
 		for _, fileToUpdate := range files.FilesToUpload {
-			color.Green("	update: %q", fileToUpdate)
+			color.Green("	upload: %q", fileToUpdate)
 		}
 
 		fmt.Println()

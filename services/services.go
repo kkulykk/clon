@@ -165,7 +165,7 @@ func CheckFiles(sess *session.Session, bucket string, remotePath string, localPa
 	remotePathPrefix := GetRemoteFilePathPrefix(remotePath)
 	localPathPrefix := localPath
 
-	if !strings.HasSuffix(remotePathPrefix, "/") {
+	if !strings.HasSuffix(remotePathPrefix, "/") && remotePathPrefix != "" {
 		remotePathPrefix = remotePathPrefix + "/"
 	}
 
@@ -176,6 +176,10 @@ func CheckFiles(sess *session.Session, bucket string, remotePath string, localPa
 	if strings.HasPrefix(localPathPrefix, "./") {
 		localPathPrefix = strings.Replace(localPathPrefix, "./", "", 1)
 	}
+
+	fmt.Println("remotePathPrefix", remotePathPrefix)
+	fmt.Println("localPathPrefix", localPathPrefix)
+	fmt.Println()
 
 	var filesToUpdate []string
 	remoteFiles, _ := GetAwsS3ItemMap(sess, bucket, remotePath)
@@ -200,14 +204,14 @@ func CheckFiles(sess *session.Session, bucket string, remotePath string, localPa
 				localFilePathOnRemote := strings.Replace(path, localPathPrefix, "", 1)
 
 				// If checksum does not match add this file to arrays with files t
-				if !ValidateChecksum(contents, remoteFiles[localFilePathOnRemote]) {
+				if !ValidateChecksum(contents, remoteFiles[remotePathPrefix+localFilePathOnRemote]) {
 					filesToUpdate = append(filesToUpdate, path)
 				}
 
 				filteredRemoteFilesPaths := make([]string, 0)
 
 				for _, remoteFilePath := range remoteFilesPaths {
-					if localFilePathOnRemote != remoteFilePath {
+					if remotePathPrefix+localFilePathOnRemote != remoteFilePath {
 						filteredRemoteFilesPaths = append(filteredRemoteFilesPaths, remoteFilePath)
 					}
 				}
