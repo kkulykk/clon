@@ -130,7 +130,7 @@ func GetRemotes(sess *session.Session) {
 
 // Check : Helper function to check if local and remote directories are up-to-date
 func Check(sess *session.Session, localPath string, remotePath string) {
-	// TODO! Add bucket existance check
+	// TODO! Add bucket existence check
 	bucket := services.GetBucketNameFromRemotePath(remotePath)
 	files := services.CheckFiles(sess, bucket, remotePath, localPath)
 
