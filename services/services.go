@@ -159,27 +159,42 @@ func ValidateChecksum(localFileContent []byte, remoteFileChecksum string) bool {
 	return false
 }
 
-// CheckFiles : Iterate through all the files and compare checksums
-func CheckFiles(sess *session.Session, bucket string, remotePath string, localPath string) CheckFilesResult {
-	checkFilesResult := CheckFilesResult{}
+// GetRemotePathPrefix : Return prefix of file with remote path
+func GetRemotePathPrefix(remotePath string) string {
 	remotePathPrefix := GetRemoteFilePathPrefix(remotePath)
-	localPathPrefix := localPath
 
 	if !strings.HasSuffix(remotePathPrefix, "/") && remotePathPrefix != "" {
 		remotePathPrefix = remotePathPrefix + "/"
 	}
 
+	return remotePathPrefix
+}
+
+// GetLocalPathPrefix : Return prefix of file with local path
+func GetLocalPathPrefix(localPath string) string {
+	localPathPrefix := localPath
+
 	if !strings.HasSuffix(localPathPrefix, "/") {
 		localPathPrefix = localPathPrefix + "/"
 	}
+
 	// Remove ./ from local file prefix if its path starts with it
 	if strings.HasPrefix(localPathPrefix, "./") {
 		localPathPrefix = strings.Replace(localPathPrefix, "./", "", 1)
 	}
 
-	fmt.Println("remotePathPrefix", remotePathPrefix)
-	fmt.Println("localPathPrefix", localPathPrefix)
-	fmt.Println()
+	return localPathPrefix
+}
+
+// CheckFiles : Iterate through all the files and compare checksums
+func CheckFiles(sess *session.Session, bucket string, remotePath string, localPath string) CheckFilesResult {
+	checkFilesResult := CheckFilesResult{}
+	remotePathPrefix := GetRemotePathPrefix(remotePath)
+	localPathPrefix := GetLocalPathPrefix(localPath)
+
+	//fmt.Println("remotePathPrefix", remotePathPrefix)
+	//fmt.Println("localPathPrefix", localPathPrefix)
+	//fmt.Println()
 
 	var filesToUpdate []string
 	remoteFiles, _ := GetAwsS3ItemMap(sess, bucket, remotePath)

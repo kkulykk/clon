@@ -7,6 +7,7 @@ import (
 	"github.com/fatih/color"
 	"log"
 	"os"
+	"strings"
 )
 
 type CheckFilesResult struct {
@@ -160,5 +161,38 @@ func Check(sess *session.Session, localPath string, remotePath string) {
 		}
 
 		fmt.Println()
+	}
+}
+
+func Sync(sess *session.Session) {
+	remotePath := "clon-demo:folder1"
+	localPath := "./remote/folder1"
+	bucket := services.GetBucketNameFromRemotePath(remotePath)
+	remotePathPrefix := services.GetRemotePathPrefix(remotePath)
+	localPathPrefix := services.GetLocalPathPrefix(localPath)
+
+	fmt.Println("remotePathPrefix", remotePathPrefix)
+	fmt.Println("localPathPrefix", localPathPrefix)
+
+	files := services.CheckFiles(sess, bucket, remotePath, localPath)
+
+	fmt.Println("files", files)
+
+	if len(files.FilesToUpload) > 0 {
+		fmt.Println("Files to upload:")
+
+		for _, fileToUpdate := range files.FilesToUpload {
+			color.Green("	upload: %q", fileToUpdate)
+
+			splittedRemoteFileDirectory := strings.Split(fileToUpdate, "/")
+			// We should add / at the end of remoteFileDirectory to make it match with localPathPrefix and be able to replace it later
+			// With remotePathPrefix
+			remoteFileDirectory := strings.Join(splittedRemoteFileDirectory[:len(splittedRemoteFileDirectory)-1], "/") + "/"
+
+			fmt.Println("fileToUpdate", fileToUpdate)
+			fmt.Println("remoteFileDirectory", remoteFileDirectory)
+
+			services.UploadFile(sess, bucket, fileToUpdate, strings.Replace(remoteFileDirectory, localPathPrefix, remotePathPrefix, 1))
+		}
 	}
 }
