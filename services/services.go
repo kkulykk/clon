@@ -147,68 +147,82 @@ func difference(slice1 []string, slice2 []string) []string {
 	return diff
 }
 
-// CheckFiles : Iterate through all the files and compare checksums
-func CheckFiles(remoteItems map[string]string, paths string) *CheckFilesResult {
-	var filesToUpdate []string
-	var filesToDelete []string
-	var actualFiles []string
+// ValidateChecksum : Check if checksum of local file matches with remote file checksum
+func ValidateChecksum(localFileContent []byte, remoteFileChecksum string) bool {
+	localFileMd5Sum := md5.Sum(localFileContent)
+	localFileChecksum := fmt.Sprintf("%x", localFileMd5Sum)
 
-	remoteFiles := make([]string, 0, len(remoteItems))
-
-	for k := range remoteItems {
-		remoteFiles = append(remoteFiles, k)
+	if localFileChecksum == remoteFileChecksum {
+		return true
 	}
 
-	var numfiles int
-	result := CheckFilesResult{}
+	return false
+}
 
-	fmt.Println(paths)
+// CheckFiles : Iterate through all the files and compare checksums
+func CheckFiles(sess *session.Session, bucket string, remotePath string, localPath string) CheckFilesResult {
+	checkFilesResult := CheckFilesResult{}
+	remotePathPrefix := GetRemoteFilePathPrefix(remotePath)
+	localPathPrefix := localPath
 
-	filepath.Walk(paths, func(path string, info os.FileInfo, err error) error {
+	if !strings.HasSuffix(remotePathPrefix, "/") {
+		remotePathPrefix = remotePathPrefix + "/"
+	}
+
+	if !strings.HasSuffix(localPathPrefix, "/") {
+		localPathPrefix = localPathPrefix + "/"
+	}
+	// Remove ./ from local file prefix if its path starts with it
+	if strings.HasPrefix(localPathPrefix, "./") {
+		localPathPrefix = strings.Replace(localPathPrefix, "./", "", 1)
+	}
+
+	var filesToUpdate []string
+	remoteFiles, _ := GetAwsS3ItemMap(sess, bucket, remotePath)
+	remoteFilesPaths := make([]string, len(remoteFiles))
+
+	i := 0
+	for remotePath := range remoteFiles {
+		remoteFilesPaths[i] = remotePath
+		i++
+	}
+
+	filepath.Walk(localPath, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
 		}
-		if !info.IsDir() {
-			numfiles++
-			relativeFile := strings.Replace(path, paths, "", 1)
-			fmt.Println(remoteItems)
-			checksumRemote, _ := remoteItems[relativeFile]
 
-			validateChecksum(path, checksumRemote, filesToUpdate, actualFiles)
+		if !info.IsDir() {
+			contents, err := os.ReadFile(path)
+
+			if err == nil {
+				// Should remote /remote from the beginning of the local path to conform with remote path
+				localFilePathOnRemote := strings.Replace(path, localPathPrefix, "", 1)
+
+				// If checksum does not match add this file to arrays with files t
+				if !ValidateChecksum(contents, remoteFiles[localFilePathOnRemote]) {
+					filesToUpdate = append(filesToUpdate, path)
+				}
+
+				filteredRemoteFilesPaths := make([]string, 0)
+
+				for _, remoteFilePath := range remoteFilesPaths {
+					if localFilePathOnRemote != remoteFilePath {
+						filteredRemoteFilesPaths = append(filteredRemoteFilesPaths, remoteFilePath)
+					}
+				}
+
+				remoteFilesPaths = filteredRemoteFilesPaths
+			} else {
+				ExitErrorf("Error reading file %q", path)
+			}
 		}
 
 		return nil
 	})
 
-	filesToDelete = difference(remoteFiles, append(actualFiles, filesToUpdate...))
+	checkFilesResult.FilesToUpload = filesToUpdate
+	checkFilesResult.FilesToDelete = remoteFilesPaths
 
-	fmt.Println(filesToUpdate)
-	fmt.Println(filesToDelete)
-	fmt.Println(actualFiles)
-
-	result.FilesToUpload = filesToUpdate
-	result.FilesToDelete = filesToDelete
-
-	return &result
-}
-
-func validateChecksum(filename string, checksumRemote string, filesToUpdate []string, actualFiles []string) {
-
-	if checksumRemote == "" {
-		filesToUpdate = append(filesToUpdate, filename)
-		return
-	}
-
-	contents, err := os.ReadFile(filename)
-	if err == nil {
-		sum := md5.Sum(contents)
-		sumString := fmt.Sprintf("%x", sum)
-		if sumString != checksumRemote {
-			filesToUpdate = append(filesToUpdate, filename)
-			return
-		} else {
-			actualFiles = append(actualFiles, filename)
-			return
-		}
-	}
+	return checkFilesResult
 }

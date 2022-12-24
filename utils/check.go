@@ -7,17 +7,18 @@ import (
 
 type CheckCommand struct {
 	Args struct {
-		RemotePath string
 		LocalPath  string
+		RemotePath string
 	} `positional-args:"no" required:"2"`
 }
 
 var checkCommand CheckCommand
 
-func (x *CheckCommand) Execute(args []string) error {
-
+func (options *CheckCommand) Execute(args []string) error {
+	//remotePath := "clon-demo:"
+	//localPath := "./remote"
 	sess := services.ConnectAws()
-	instructions.Check(sess, "clon-test", x.Args.LocalPath)
+	instructions.Check(sess, options.Args.LocalPath, options.Args.RemotePath)
 
 	return nil
 }

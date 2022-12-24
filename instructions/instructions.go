@@ -2,14 +2,11 @@ package instructions
 
 import (
 	"clon/services"
-	"crypto/md5"
 	"fmt"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/fatih/color"
 	"log"
 	"os"
-	"path/filepath"
-	"strings"
 )
 
 type CheckFilesResult struct {
@@ -132,121 +129,36 @@ func GetRemotes(sess *session.Session) {
 }
 
 // Check : Helper function to check if local and remote directories are up-to-date
-// func Check(sess *session.Session, bucket string, path string) {
-func Check(sess *session.Session) {
-	bucket := "clon-demo"
-	remotePath := "clon-demo"
-	localPath := "./remote"
-	remotePathPrefix := services.GetRemoteFilePathPrefix(remotePath)
-	localPathPrefix := localPath
+func Check(sess *session.Session, localPath string, remotePath string) {
+	// TODO! Add bucket existance check
+	bucket := services.GetBucketNameFromRemotePath(remotePath)
+	files := services.CheckFiles(sess, bucket, remotePath, localPath)
 
-	if !strings.HasSuffix(remotePathPrefix, "/") {
-		remotePathPrefix = remotePathPrefix + "/"
+	if len(files.FilesToUpload) == 0 && len(files.FilesToDelete) == 0 {
+		fmt.Println("Remote and local paths are synchronized ;)")
+
+		return
+	} else {
+		fmt.Println("Remote and local paths are NOT synchronized ;(\nCheck a difference below\n")
 	}
 
-	if !strings.HasSuffix(localPathPrefix, "/") {
-		localPathPrefix = localPathPrefix + "/"
-	}
-	// Remove ./ from local file prefix if its path starts with it
-	if strings.HasPrefix(localPathPrefix, "./") {
-		localPathPrefix = strings.Replace(localPathPrefix, "./", "", 1)
-	}
+	if len(files.FilesToUpload) > 0 {
+		fmt.Println("Files to update:")
 
-	var filesToUpdate []string
-	remoteFiles, _ := services.GetAwsS3ItemMap(sess, bucket, remotePath)
-	remoteFilesPaths := make([]string, len(remoteFiles))
-
-	i := 0
-	for remotePath := range remoteFiles {
-		remoteFilesPaths[i] = remotePath
-		i++
-	}
-
-	filepath.Walk(localPath, func(path string, info os.FileInfo, err error) error {
-		if err != nil {
-			return err
-		}
-
-		if !info.IsDir() {
-			contents, err := os.ReadFile(path)
-
-			if err == nil {
-				// Should remote /remote from the beginning of the local path to conform with remote path
-				localFilePathOnRemote := strings.Replace(path, localPathPrefix, "", 1)
-				localFileMd5Sum := md5.Sum(contents)
-				localFileChecksum := fmt.Sprintf("%x", localFileMd5Sum)
-
-				if localFileChecksum != remoteFiles[localFilePathOnRemote] {
-					filesToUpdate = append(filesToUpdate, path)
-				}
-
-				filteredRemoteFilesPaths := make([]string, 0)
-
-				for _, remoteFilePath := range remoteFilesPaths {
-					if localFilePathOnRemote != remoteFilePath {
-						filteredRemoteFilesPaths = append(filteredRemoteFilesPaths, remoteFilePath)
-					}
-				}
-
-				remoteFilesPaths = filteredRemoteFilesPaths
-			} else {
-				services.ExitErrorf("Error reading file %q", path)
-			}
-		}
-
-		return nil
-	})
-
-	//fmt.Println("filesToUpdate", filesToUpdate)
-	//fmt.Println("filesToDelete", remoteFilesPaths)
-
-	if len(filesToUpdate) > 0 {
-		fmt.Println("Files to update:\n")
-
-		for _, fileToUpdate := range filesToUpdate {
+		for _, fileToUpdate := range files.FilesToUpload {
 			color.Green("	update: %q", fileToUpdate)
 		}
 
 		fmt.Println()
 	}
 
-	if len(remoteFilesPaths) > 0 {
+	if len(files.FilesToDelete) > 0 {
 		fmt.Println("Files to delete:")
 
-		for _, fileToDelete := range remoteFilesPaths {
+		for _, fileToDelete := range files.FilesToDelete {
 			color.Red("	delete: %q", fileToDelete)
 		}
 
 		fmt.Println()
 	}
-
-	return
-
-	//remoteFiles, err := services.GetAwsS3ItemMap(sess, bucket)
-	//files := services.CheckFiles(remoteFiles, path)
-	//
-	//if len(files.FilesToDelete) == 0 && len(files.FilesToUpload) == 0 {
-	//	fmt.Println("Local and remote storages are up to date.")
-	//}
-	//
-	//if len(files.FilesToDelete) > 0 && len(files.FilesToUpload) == 0 {
-	//	fmt.Println("No files need to be updated. The following files need to be deleted on remote: ")
-	//	fmt.Println(files.FilesToDelete)
-	//}
-	//
-	//if len(files.FilesToUpload) > 0 && len(files.FilesToDelete) == 0 {
-	//	fmt.Println("No files need to be deleted on remote. The following files need to be updated on remote: ")
-	//	fmt.Println(files.FilesToUpload)
-	//}
-	//
-	//if len(files.FilesToUpload) > 0 && len(files.FilesToDelete) > 0 {
-	//	fmt.Println("The following files need to be updated on remote: ")
-	//	fmt.Println(files.FilesToUpload)
-	//	fmt.Println("The following files need to be deleted on remote: ")
-	//	fmt.Println(files.FilesToUpload)
-	//}
-	//
-	//if err != nil {
-	//	return
-	//}
 }
