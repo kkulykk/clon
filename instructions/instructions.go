@@ -71,7 +71,6 @@ func ListElements(sess *session.Session, path string) {
 
 // Delete : Helper function to remove file(s) from a remote entity in the cloud
 func Delete(sess *session.Session, path string) {
-
 	if services.GetBucketNameFromRemotePath(path) == "" {
 		services.ExitErrorf("You should provide remote name to delete something")
 	}
@@ -165,8 +164,8 @@ func Check(sess *session.Session, localPath string, remotePath string) {
 }
 
 func Sync(sess *session.Session) {
-	remotePath := "clon-demo:folder1"
-	localPath := "./remote/folder1"
+	remotePath := "clon-demo"
+	localPath := "./remote"
 	bucket := services.GetBucketNameFromRemotePath(remotePath)
 	remotePathPrefix := services.GetRemotePathPrefix(remotePath)
 	localPathPrefix := services.GetLocalPathPrefix(localPath)
@@ -180,7 +179,6 @@ func Sync(sess *session.Session) {
 
 	if len(files.FilesToUpload) > 0 {
 		fmt.Println("Files to upload:")
-
 		for _, fileToUpdate := range files.FilesToUpload {
 			color.Green("	upload: %q", fileToUpdate)
 
@@ -192,7 +190,24 @@ func Sync(sess *session.Session) {
 			fmt.Println("fileToUpdate", fileToUpdate)
 			fmt.Println("remoteFileDirectory", remoteFileDirectory)
 
+			// We should replace localPathPrefix with remotePathPrefix to set correct bucket path
 			services.UploadFile(sess, bucket, fileToUpdate, strings.Replace(remoteFileDirectory, localPathPrefix, remotePathPrefix, 1))
+		}
+	}
+
+	if len(files.FilesToDelete) > 0 {
+		for _, fileToDelete := range files.FilesToDelete {
+			color.Red("	delete: %q", fileToDelete)
+
+			remoteFilePathToDelete := bucket + ":" + strings.Join(strings.Split(fileToDelete, "/"), ":")
+
+			fmt.Println("remoteFilePathToDelete", remoteFilePathToDelete)
+
+			err := services.DeleteFile(sess, remoteFilePathToDelete)
+
+			if err != nil {
+				fmt.Printf("Error while deleting %q file\n", fileToDelete)
+			}
 		}
 	}
 }
