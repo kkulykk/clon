@@ -163,9 +163,7 @@ func Check(sess *session.Session, localPath string, remotePath string) {
 	}
 }
 
-func Sync(sess *session.Session) {
-	remotePath := "clon-demo"
-	localPath := "./remote"
+func Sync(sess *session.Session, localPath string, remotePath string) {
 	bucket := services.GetBucketNameFromRemotePath(remotePath)
 	remotePathPrefix := services.GetRemotePathPrefix(remotePath)
 	localPathPrefix := services.GetLocalPathPrefix(localPath)
