@@ -81,7 +81,7 @@ func Delete(sess *session.Session, path string) {
 		fmt.Println("Detected an attempt to remove all contents from remote.")
 		fmt.Println("After performing the operation, you will not be able to restore the data.")
 
-		if services.Confirm() {
+		if services.Confirm("this operation") {
 			err := services.DeleteAll(sess, bucket)
 			if err != nil {
 				return
@@ -93,7 +93,7 @@ func Delete(sess *session.Session, path string) {
 		fmt.Printf("Detected an attempt to remove all contents from a directory %v\n", path)
 		fmt.Println("After performing the operation, you will not be able to restore the data.")
 
-		if services.Confirm() {
+		if services.Confirm("this operation") {
 			err := services.DeleteDirectory(sess, path)
 			if err != nil {
 				return
@@ -130,16 +130,23 @@ func GetRemotes(sess *session.Session) {
 
 // Check : Helper function to check if local and remote directories are up-to-date
 func Check(sess *session.Session, localPath string, remotePath string) {
-	// TODO! Add bucket existence check
+	if !services.RemotePathExists(sess, remotePath) {
+		services.ExitErrorf("Remote path %q does not exist.\nCheck the correctness of input or arguments order", remotePath)
+	}
+
+	if _, err := os.Stat(localPath); os.IsNotExist(err) {
+		services.ExitErrorf("Local path %q does not exist.\nCheck the correctness of input or arguments order", localPath)
+	}
+
 	bucket := services.GetBucketNameFromRemotePath(remotePath)
 	files := services.CheckFiles(sess, bucket, remotePath, localPath)
 
 	if len(files.FilesToUpload) == 0 && len(files.FilesToDelete) == 0 {
-		fmt.Println("Remote and local paths are synchronized ;)")
+		fmt.Println("Remote and local paths are up-to-date")
 
 		return
 	} else {
-		fmt.Println("Remote and local paths are NOT synchronized ;(\nCheck a difference below\n")
+		fmt.Println("Remote and local paths are NOT synchronized\nCheck a difference below")
 	}
 
 	if len(files.FilesToUpload) > 0 {
@@ -163,49 +170,54 @@ func Check(sess *session.Session, localPath string, remotePath string) {
 	}
 }
 
+// Sync : Helper function to make remote directory up-to-date with local
 func Sync(sess *session.Session, localPath string, remotePath string) {
 	bucket := services.GetBucketNameFromRemotePath(remotePath)
 	remotePathPrefix := services.GetRemotePathPrefix(remotePath)
 	localPathPrefix := services.GetLocalPathPrefix(localPath)
-
-	fmt.Println("remotePathPrefix", remotePathPrefix)
-	fmt.Println("localPathPrefix", localPathPrefix)
-
 	files := services.CheckFiles(sess, bucket, remotePath, localPath)
-
-	fmt.Println("files", files)
 
 	if len(files.FilesToUpload) > 0 {
 		fmt.Println("Files to upload:")
 		for _, fileToUpdate := range files.FilesToUpload {
 			color.Green("	upload: %q", fileToUpdate)
+		}
+		if services.Confirm("uploading this file(s)") {
 
-			splittedRemoteFileDirectory := strings.Split(fileToUpdate, "/")
-			// We should add / at the end of remoteFileDirectory to make it match with localPathPrefix and be able to replace it later
-			// With remotePathPrefix
-			remoteFileDirectory := strings.Join(splittedRemoteFileDirectory[:len(splittedRemoteFileDirectory)-1], "/") + "/"
+			for _, fileToUpdate := range files.FilesToUpload {
+				splitRemoteFileDirectory := strings.Split(fileToUpdate, "/")
+				// We should add / at the end of remoteFileDirectory to make it match with localPathPrefix and be able to replace it later
+				// With remotePathPrefix
+				remoteFileDirectory := strings.Join(splitRemoteFileDirectory[:len(splitRemoteFileDirectory)-1], "/") + "/"
 
-			fmt.Println("fileToUpdate", fileToUpdate)
-			fmt.Println("remoteFileDirectory", remoteFileDirectory)
-
-			// We should replace localPathPrefix with remotePathPrefix to set correct bucket path
-			services.UploadFile(sess, bucket, fileToUpdate, strings.Replace(remoteFileDirectory, localPathPrefix, remotePathPrefix, 1))
+				// We should replace localPathPrefix with remotePathPrefix to set correct bucket path
+				services.UploadFile(sess, bucket, fileToUpdate, strings.Replace(remoteFileDirectory, localPathPrefix, remotePathPrefix, 1))
+			}
+		} else {
+			os.Exit(1)
 		}
 	}
 
 	if len(files.FilesToDelete) > 0 {
+		fmt.Println("Files to delete:")
 		for _, fileToDelete := range files.FilesToDelete {
 			color.Red("	delete: %q", fileToDelete)
-
-			remoteFilePathToDelete := bucket + ":" + strings.Join(strings.Split(fileToDelete, "/"), ":")
-
-			fmt.Println("remoteFilePathToDelete", remoteFilePathToDelete)
-
-			err := services.DeleteFile(sess, remoteFilePathToDelete)
-
-			if err != nil {
-				fmt.Printf("Error while deleting %q file\n", fileToDelete)
-			}
 		}
+
+		if services.Confirm("deleting this file(s)") {
+			for _, fileToDelete := range files.FilesToDelete {
+				remoteFilePathToDelete := bucket + ":" + strings.Join(strings.Split(fileToDelete, "/"), ":")
+				err := services.DeleteFile(sess, remoteFilePathToDelete)
+				if err != nil {
+					fmt.Printf("Error while deleting %q file\n", fileToDelete)
+				}
+			}
+		} else {
+			os.Exit(1)
+		}
+	}
+
+	if len(files.FilesToUpload) == 0 && len(files.FilesToDelete) == 0 {
+		fmt.Println("No files need to be synchronized")
 	}
 }

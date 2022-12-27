@@ -33,7 +33,6 @@ func LoadEnv() {
 
 	if err != nil {
 		log.Fatalf("Error loading .env file")
-		os.Exit(1)
 	}
 }
 
@@ -98,10 +97,10 @@ func GetRemoteFilePath(path string) string {
 }
 
 // Confirm : Return true if a user confirms the action
-func Confirm() bool {
+func Confirm(action string) bool {
 	var input string
 
-	fmt.Printf("Do you want to continue with this operation? [y|n]: ")
+	fmt.Printf("Do you want to continue with %s? [y|n]: ", action)
 	_, err := fmt.Scanln(&input)
 	if err != nil {
 		panic(err)
@@ -117,34 +116,6 @@ func Confirm() bool {
 // IsDirectory : Return true if a given path is a directory
 func IsDirectory(path string) bool {
 	return strings.HasSuffix(path, ":") || strings.HasSuffix(path, "/")
-}
-
-func difference(slice1 []string, slice2 []string) []string {
-	var diff []string
-
-	// Loop two times, first to find slice1 strings not in slice2,
-	// second loop to find slice2 strings not in slice1
-	for i := 0; i < 2; i++ {
-		for _, s1 := range slice1 {
-			found := false
-			for _, s2 := range slice2 {
-				if s1 == s2 {
-					found = true
-					break
-				}
-			}
-			// String not found. We add it to return slice
-			if !found {
-				diff = append(diff, s1)
-			}
-		}
-		// Swap the slices, only if it was the first loop
-		if i == 0 {
-			slice1, slice2 = slice2, slice1
-		}
-	}
-
-	return diff
 }
 
 // ValidateChecksum : Check if checksum of local file matches with remote file checksum
@@ -191,10 +162,6 @@ func CheckFiles(sess *session.Session, bucket string, remotePath string, localPa
 	checkFilesResult := CheckFilesResult{}
 	remotePathPrefix := GetRemotePathPrefix(remotePath)
 	localPathPrefix := GetLocalPathPrefix(localPath)
-
-	//fmt.Println("remotePathPrefix", remotePathPrefix)
-	//fmt.Println("localPathPrefix", localPathPrefix)
-	//fmt.Println()
 
 	var filesToUpdate []string
 	remoteFiles, _ := GetAwsS3ItemMap(sess, bucket, remotePath)

@@ -264,6 +264,20 @@ func GetBucketFileSize(sess *session.Session, bucket string, remoteFilePath stri
 	fmt.Printf("Size of %q (bucket: %q): %v bytes\n", remoteFilePath, bucket, aws.Int64Value(result.ContentLength))
 }
 
+func RemotePathExists(sess *session.Session, remotePath string) bool {
+	svc := s3.New(sess)
+	bucketName := GetBucketNameFromRemotePath(remotePath)
+	remoteFilePath := GetRemoteFilePath(remotePath)
+	_, err := svc.HeadObject(&s3.HeadObjectInput{
+		Bucket: aws.String(bucketName),
+		Key:    aws.String(remoteFilePath),
+	})
+	if err != nil {
+		return false
+	}
+	return true
+}
+
 /*
 *
 getAwsS3ItemMap constructs and returns a map of keys (relative filenames)

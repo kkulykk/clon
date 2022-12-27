@@ -18,8 +18,6 @@ type SyncCommand struct {
 var syncCommand SyncCommand
 
 func (options *SyncCommand) Execute(args []string) error {
-	//remotePath := "clon-demo:"
-	//localPath := "./remote"
 	sess := services.ConnectAws()
 	instructions.Sync(sess, options.Args.LocalPath, options.Args.RemotePath)
 

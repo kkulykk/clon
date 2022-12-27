@@ -15,8 +15,6 @@ type CheckCommand struct {
 var checkCommand CheckCommand
 
 func (options *CheckCommand) Execute(args []string) error {
-	//remotePath := "clon-demo:"
-	//localPath := "./remote"
 	sess := services.ConnectAws()
 	instructions.Check(sess, options.Args.LocalPath, options.Args.RemotePath)
 
@@ -25,11 +23,8 @@ func (options *CheckCommand) Execute(args []string) error {
 
 func init() {
 	_, err := Parser.AddCommand("check",
-		//TODO: update descriptions
-		"Make source and dest identical",
-		"Make source and dest identical, modifying destination only. Use -s to soft sync of files \n"+
-			" (add only non-existent file by names) or -f to force sync (syncing based on name, size and \n"+
-			"modification date of files).",
+		"Checks the files in the source and destination match",
+		"Checks the files in the source and destination match. It compares sizes and hashes (MD5 or SHA1) and logs a report of files that don't match. It doesn't alter the source or destination.",
 		&checkCommand)
 	if err != nil {
 		return
