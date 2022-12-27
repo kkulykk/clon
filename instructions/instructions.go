@@ -35,7 +35,7 @@ func Copy(sess *session.Session, fromPath string, toPath string) {
 		bucketName := services.GetBucketNameFromRemotePath(toPath)
 		remoteFilePath := services.GetRemoteFilePath(toPath)
 
-		services.UploadFile(sess, bucketName, fromPath, remoteFilePath)
+		services.UploadFileWithChecksum(sess, bucketName, fromPath, remoteFilePath)
 	}
 }
 
