@@ -1,18 +1,26 @@
 package utils
 
 import (
-	"fmt"
+	"clon/instructions"
+	"clon/services"
 )
 
 type SyncCommand struct {
 	Soft  bool `short:"s" long:"soft" description:"Soft syncing of files"`
 	Force bool `short:"f" long:"force" description:"Force syncing of files"`
+	Args  struct {
+		LocalPath  string
+		RemotePath string
+		// TODO! What does positional-args:"no" mean?
+	} `positional-args:"no" required:"2"`
 }
 
 var syncCommand SyncCommand
 
-func (x *SyncCommand) Execute(args []string) error {
-	fmt.Printf("Syncing (force=%v): %#v\n", x.Force, args)
+func (options *SyncCommand) Execute(args []string) error {
+	sess := services.ConnectAws()
+	instructions.Sync(sess, options.Args.LocalPath, options.Args.RemotePath)
+
 	return nil
 }
 

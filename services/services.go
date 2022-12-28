@@ -1,6 +1,7 @@
 package services
 
 import (
+	"crypto/md5"
 	"fmt"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
@@ -8,12 +9,18 @@ import (
 	"github.com/joho/godotenv"
 	"log"
 	"os"
+	"path/filepath"
 	"strings"
 )
 
 var AccessKeyID string
 var SecretAccessKey string
 var MyRegion string
+
+type CheckFilesResult struct {
+	FilesToUpload []string
+	FilesToDelete []string
+}
 
 // GetEnvWithKey : Get environmental variable value by name
 func GetEnvWithKey(key string) string {
@@ -26,7 +33,6 @@ func LoadEnv() {
 
 	if err != nil {
 		log.Fatalf("Error loading .env file")
-		os.Exit(1)
 	}
 }
 
@@ -91,10 +97,10 @@ func GetRemoteFilePath(path string) string {
 }
 
 // Confirm : Return true if a user confirms the action
-func Confirm() bool {
+func Confirm(action string) bool {
 	var input string
 
-	fmt.Printf("Do you want to continue with this operation? [y|n]: ")
+	fmt.Printf("Do you want to continue with %s? [y|n]: ", action)
 	_, err := fmt.Scanln(&input)
 	if err != nil {
 		panic(err)
@@ -110,4 +116,99 @@ func Confirm() bool {
 // IsDirectory : Return true if a given path is a directory
 func IsDirectory(path string) bool {
 	return strings.HasSuffix(path, ":") || strings.HasSuffix(path, "/")
+}
+
+// ValidateChecksum : Check if checksum of local file matches with remote file checksum
+func ValidateChecksum(localFileContent []byte, remoteFileChecksum string) bool {
+	localFileMd5Sum := md5.Sum(localFileContent)
+	localFileChecksum := fmt.Sprintf("%x", localFileMd5Sum)
+
+	if localFileChecksum == remoteFileChecksum {
+		return true
+	}
+
+	return false
+}
+
+// GetRemotePathPrefix : Return prefix of file with remote path
+func GetRemotePathPrefix(remotePath string) string {
+	remotePathPrefix := GetRemoteFilePathPrefix(remotePath)
+
+	if !strings.HasSuffix(remotePathPrefix, "/") && remotePathPrefix != "" {
+		remotePathPrefix = remotePathPrefix + "/"
+	}
+
+	return remotePathPrefix
+}
+
+// GetLocalPathPrefix : Return prefix of file with local path
+func GetLocalPathPrefix(localPath string) string {
+	localPathPrefix := localPath
+
+	if !strings.HasSuffix(localPathPrefix, "/") {
+		localPathPrefix = localPathPrefix + "/"
+	}
+
+	// Remove ./ from local file prefix if its path starts with it
+	if strings.HasPrefix(localPathPrefix, "./") {
+		localPathPrefix = strings.Replace(localPathPrefix, "./", "", 1)
+	}
+
+	return localPathPrefix
+}
+
+// CheckFiles : Iterate through all the files and compare checksums
+func CheckFiles(sess *session.Session, bucket string, remotePath string, localPath string) CheckFilesResult {
+	checkFilesResult := CheckFilesResult{}
+	remotePathPrefix := GetRemotePathPrefix(remotePath)
+	localPathPrefix := GetLocalPathPrefix(localPath)
+
+	var filesToUpdate []string
+	remoteFiles, _ := GetAwsS3ItemMap(sess, bucket, remotePath)
+	remoteFilesPaths := make([]string, len(remoteFiles))
+
+	i := 0
+	for remotePath := range remoteFiles {
+		remoteFilesPaths[i] = remotePath
+		i++
+	}
+
+	filepath.Walk(localPath, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+
+		if !info.IsDir() {
+			contents, err := os.ReadFile(path)
+
+			if err == nil {
+				// Should remote /remote from the beginning of the local path to conform with remote path
+				localFilePathOnRemote := strings.Replace(path, localPathPrefix, "", 1)
+
+				// If checksum does not match add this file to arrays with files t
+				if !ValidateChecksum(contents, remoteFiles[remotePathPrefix+localFilePathOnRemote]) {
+					filesToUpdate = append(filesToUpdate, path)
+				}
+
+				filteredRemoteFilesPaths := make([]string, 0)
+
+				for _, remoteFilePath := range remoteFilesPaths {
+					if remotePathPrefix+localFilePathOnRemote != remoteFilePath {
+						filteredRemoteFilesPaths = append(filteredRemoteFilesPaths, remoteFilePath)
+					}
+				}
+
+				remoteFilesPaths = filteredRemoteFilesPaths
+			} else {
+				ExitErrorf("Error reading file %q", path)
+			}
+		}
+
+		return nil
+	})
+
+	checkFilesResult.FilesToUpload = filesToUpdate
+	checkFilesResult.FilesToDelete = remoteFilesPaths
+
+	return checkFilesResult
 }

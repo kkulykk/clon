@@ -316,3 +316,56 @@ func GetBucketFileSize(sess *session.Session, bucket string, remoteFilePath stri
 
 	fmt.Printf("Size of %q (bucket: %q): %v bytes\n", remoteFilePath, bucket, aws.Int64Value(result.ContentLength))
 }
+
+func RemotePathExists(sess *session.Session, remotePath string) bool {
+	svc := s3.New(sess)
+	bucketName := GetBucketNameFromRemotePath(remotePath)
+	remoteFilePath := GetRemoteFilePath(remotePath)
+	_, err := svc.HeadObject(&s3.HeadObjectInput{
+		Bucket: aws.String(bucketName),
+		Key:    aws.String(remoteFilePath),
+	})
+	if err != nil {
+		return false
+	}
+	return true
+}
+
+/*
+*
+getAwsS3ItemMap constructs and returns a map of keys (relative filenames)
+to checksums for the given bucket-configured s3 service.
+It is assumed  that the objects have not been multipart-uploaded,
+which will change the checksum.
+*/
+func GetAwsS3ItemMap(sess *session.Session, bucket string, remotePath string) (map[string]string, error) {
+	svc := s3.New(sess)
+
+	remotePathPrefix := GetRemoteFilePathPrefix(remotePath)
+
+	if !strings.HasSuffix(remotePathPrefix, "/") {
+		remotePathPrefix = remotePathPrefix + "/"
+	}
+
+	loi := s3.ListObjectsInput{
+		Bucket: aws.String(bucket),
+		Prefix: aws.String(GetRemoteFilePathPrefix(remotePath)),
+	}
+
+	obj, err := svc.ListObjects(&loi)
+
+	var items = make(map[string]string)
+
+	if err == nil {
+		for _, s3obj := range obj.Contents {
+			if !strings.HasSuffix(*(s3obj.Key), "/") {
+				// Here we get the checksum
+				eTag := strings.Trim(*(s3obj.ETag), "\"")
+				items[*(s3obj.Key)] = eTag
+			}
+		}
+		return items, nil
+	}
+
+	return nil, err
+}
