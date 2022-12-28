@@ -139,7 +139,7 @@ func Check(sess *session.Session, localPath string, remotePath string) {
 	}
 
 	bucket := services.GetBucketNameFromRemotePath(remotePath)
-	files := services.CheckFiles(sess, bucket, remotePath, localPath)
+	files := services.CheckFiles(sess, bucket, localPath, remotePath)
 
 	if len(files.FilesToUpload) == 0 && len(files.FilesToDelete) == 0 {
 		fmt.Println("Remote and local paths are up-to-date")
@@ -175,7 +175,7 @@ func Sync(sess *session.Session, localPath string, remotePath string) {
 	bucket := services.GetBucketNameFromRemotePath(remotePath)
 	remotePathPrefix := services.GetRemotePathPrefix(remotePath)
 	localPathPrefix := services.GetLocalPathPrefix(localPath)
-	files := services.CheckFiles(sess, bucket, remotePath, localPath)
+	files := services.CheckFiles(sess, bucket, localPath, remotePath)
 
 	if len(files.FilesToUpload) > 0 {
 		fmt.Println("Files to upload:")
