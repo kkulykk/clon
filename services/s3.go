@@ -28,6 +28,7 @@ func DownloadFile(sess *session.Session, bucket string, remoteFilePath string, l
 	decryptedData := DecryptFile(buf.Bytes())
 
 	err = os.WriteFile(localFilePath, decryptedData, os.FileMode(0644))
+
 	if err != nil {
 		ExitErrorf("Error saving file %q, %v", fileName, err)
 	}

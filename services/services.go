@@ -6,7 +6,6 @@ import (
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/md5"
-	"crypto/rand"
 	"encoding/base64"
 	"fmt"
 	"github.com/aws/aws-sdk-go/aws"
@@ -129,7 +128,6 @@ func IsDirectory(path string) bool {
 func ValidateChecksum(localFileContent []byte, remoteFileChecksum string) bool {
 	localFileMd5Sum := md5.Sum(localFileContent)
 	localFileChecksum := fmt.Sprintf("%x", localFileMd5Sum)
-	// TODO: fix checksum considering encryption
 
 	if localFileChecksum == remoteFileChecksum {
 		return true
@@ -228,7 +226,6 @@ func CheckFiles(sess *session.Session, bucket string, localPath string, remotePa
 		}
 
 		if !info.IsDir() {
-			//contents, err := os.ReadFile(path)
 			file, err := os.Open(path)
 			reader := bufio.NewReader(file)
 			content, _ := io.ReadAll(reader)
@@ -245,7 +242,6 @@ func CheckFiles(sess *session.Session, bucket string, localPath string, remotePa
 					if !ShouldIgnoreFile(clonignoreFilesPathsToSkip, path) {
 						filesToUpdate = append(filesToUpdate, path)
 					}
-
 				}
 
 				filteredRemoteFilesPaths := make([]string, 0)
@@ -272,49 +268,43 @@ func CheckFiles(sess *session.Session, bucket string, localPath string, remotePa
 }
 
 // Encrypt : Helper function for files encryption
-// Inspired by Joseph Spurrier https://gist.github.com/josephspurrier/8304f09562d81babb494
 func Encrypt(dataString string) []byte {
-	data := []byte(dataString)
-	key := []byte(GetEnvWithKey("AWS_ENCRYPTION_KEY"))
-
-	block, err := aes.NewCipher(key)
+	aesBlock, err := aes.NewCipher([]byte(GetEnvWithKey("AWS_ENCRYPTION_KEY")))
 	if err != nil {
-		panic(err)
+		fmt.Println(err)
 	}
 
-	ciphertext := make([]byte, aes.BlockSize+len(data))
-	iv := ciphertext[:aes.BlockSize]
-
-	if _, err := io.ReadFull(rand.Reader, iv); err != nil {
-		panic(err)
+	gcmInstance, err := cipher.NewGCM(aesBlock)
+	if err != nil {
+		fmt.Println(err)
 	}
 
-	stream := cipher.NewCFBEncrypter(block, iv)
-	stream.XORKeyStream(ciphertext[aes.BlockSize:], data)
+	nonce := make([]byte, gcmInstance.NonceSize())
+	cipheredText := gcmInstance.Seal(nonce, nonce, []byte(dataString), nil)
 
-	return ciphertext
+	return cipheredText
 }
 
 // Decrypt : Helper function for files decryption
-// Inspired by Joseph Spurrier https://gist.github.com/josephspurrier/8304f09562d81babb494
 func Decrypt(data []byte) []byte {
-	key := []byte(GetEnvWithKey("AWS_ENCRYPTION_KEY"))
-
-	block, err := aes.NewCipher(key)
+	aesBlock, err := aes.NewCipher([]byte(GetEnvWithKey("AWS_ENCRYPTION_KEY")))
 	if err != nil {
-		panic(err)
+		log.Fatalln(err)
+	}
+	gcmInstance, err := cipher.NewGCM(aesBlock)
+	if err != nil {
+		log.Fatalln(err)
 	}
 
-	if len(data) < aes.BlockSize {
-		panic("Text is too short")
+	nonceSize := gcmInstance.NonceSize()
+	nonce, cipheredText := data[:nonceSize], data[nonceSize:]
+
+	originalText, err := gcmInstance.Open(nil, nonce, cipheredText, nil)
+	if err != nil {
+		log.Fatalln(err)
 	}
 
-	iv := data[:aes.BlockSize]
-	data = data[aes.BlockSize:]
-	stream := cipher.NewCFBDecrypter(block, iv)
-	stream.XORKeyStream(data, data)
-
-	return data
+	return originalText
 }
 
 // EncryptFile Read file, convert it to base64 and encrypt
