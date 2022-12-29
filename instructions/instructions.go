@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/fatih/color"
-	"log"
 	"os"
 	"strings"
 )
@@ -85,38 +84,6 @@ func Copy(sess *session.Session, fromPath string, toPath string) {
 		}
 
 		fmt.Println()
-
-		//if _, err := os.Stat("./remote/folder4/"); !os.IsNotExist(err) {
-		//	fmt.Println("Path exists")
-		//} else {
-		//	fmt.Println("Path does NOR exist")
-		//}
-		//
-		//if err := os.MkdirAll("./remote/folder4/", os.ModeSticky|os.ModePerm); err != nil {
-		//	fmt.Printf("Error creating file with path: %q", "folder1/new_folder1")
-		//}
-		//
-		//if _, err := os.Stat("./remote/folder4/"); !os.IsNotExist(err) {
-		//	fmt.Println("Path exists")
-		//} else {
-		//	fmt.Println("Path does NOR exist")
-		//}
-
-		//if err := os.MkdirAll("./remote/folder3", os.ModeSticky|os.ModePerm); err != nil {
-		//	fmt.Printf("Error creating file with path: %q", "folder1/new_folder1")
-		//}
-
-		//if err := os.MkdirAll("./remote/folder3", os.ModeSticky|os.ModePerm); err != nil {
-		//	fmt.Printf("Error creating file with path: %q", "folder1/new_folder1")
-		//}
-
-		//services.DownloadFile(sess, "clon-demo", "folder1/new_folder1/new_text1.txt", "./remote/folder3/")
-
-		//fmt.Println("fromPath", fromPath)
-		//fmt.Println("toPath", toPath)
-		//fmt.Println("remoteFilePath", remoteFilePath)
-		//
-		//fmt.Println("services.GetRemoteFilePaths(sess, fromPath)", services.GetRemoteFilePaths(sess, fromPath))
 	} else {
 		bucketName := services.GetBucketNameFromRemotePath(toPath)
 		remoteFilePath := services.GetRemoteFilePath(toPath)
@@ -149,10 +116,7 @@ func Copy(sess *session.Session, fromPath string, toPath string) {
 
 				services.UploadFileWithChecksum(sess, bucketName, fileToUpdate, remoteFilePath+fileToUploadRemotePrefix)
 			}
-
 		}
-		// add directory path to remote
-		//services.UploadFileWithChecksum(sess, bucketName, fromPath, remoteFilePath)
 	}
 }
 
@@ -162,14 +126,48 @@ func Move(sess *session.Session, fromPath string, toPath string) {
 
 	if services.IsRemotePath(fromPath) {
 		bucketName := services.GetBucketNameFromRemotePath(fromPath)
-		remoteFilePath := services.GetRemoteFilePath(fromPath)
 
-		services.DeleteBucketFile(sess, bucketName, remoteFilePath)
+		fmt.Println("Remove from REMOTE")
+
+		remoteFilesPathsToDownload := services.GetRemoteFilePaths(sess, fromPath)
+
+		for _, remoteFilePathToDownload := range remoteFilesPathsToDownload {
+			fmt.Println(remoteFilePathToDownload)
+
+			services.DeleteBucketFile(sess, bucketName, remoteFilePathToDownload)
+		}
+
 	} else {
-		e := os.Remove(fromPath)
+		fmt.Println("Remove from LOCAL")
 
-		if e != nil {
-			log.Fatal(e)
+		localFilesPathsToDownload := services.GetLocalFilePaths(fromPath)
+
+		for _, localFilePathToDownload := range localFilesPathsToDownload {
+			fmt.Println(localFilePathToDownload)
+
+			e := os.Remove(localFilePathToDownload)
+
+			if e != nil {
+				services.ExitErrorf("Error removing local file: %q", localFilePathToDownload)
+			}
+
+			fmt.Printf("File %q has been removed", localFilePathToDownload)
+		}
+
+		if _, err := os.Stat(fromPath); !os.IsNotExist(err) {
+			fromPathInfo, err := os.Stat(fromPath)
+
+			if err != nil {
+				services.ExitErrorf("Error getting info about file: %q", fromPath)
+			}
+
+			if fromPathInfo.IsDir() {
+				e := os.Remove(fromPath)
+
+				if e != nil {
+					services.ExitErrorf("Error removing local file: %q", fromPath)
+				}
+			}
 		}
 	}
 }
