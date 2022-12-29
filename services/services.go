@@ -11,6 +11,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/joho/godotenv"
 	"io"
 	"log"
@@ -179,6 +180,49 @@ func ShouldIgnoreFile(suffixesToIgnore []string, pathToCheck string) bool {
 	}
 
 	return false
+}
+
+// GetRemoteFilePaths : Get array of remote file paths by given remote path
+func GetRemoteFilePaths(sess *session.Session, remotePath string) []string {
+	svc := s3.New(sess)
+	bucket := GetBucketNameFromRemotePath(remotePath)
+	remotePathPrefix := GetRemoteFilePathPrefix(remotePath)
+	resp, err := svc.ListObjectsV2(&s3.ListObjectsV2Input{Bucket: aws.String(bucket), Prefix: aws.String(remotePathPrefix)})
+	var remotePaths []string
+
+	if err != nil {
+		ExitErrorf("Unable get items in from bucket: %q and path: %q, %v, ", bucket, remotePathPrefix, err)
+	}
+
+	for _, item := range resp.Contents {
+		remotePath := *item.Key
+
+		// Check if path is not directory path
+		if !strings.HasSuffix(remotePath, "/") {
+			remotePaths = append(remotePaths, *item.Key)
+		}
+	}
+
+	return remotePaths
+}
+
+// GetLocalFilePaths : Get array of local file paths by given local path
+func GetLocalFilePaths(localPath string) []string {
+	var localPaths []string
+
+	filepath.Walk(localPath, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			ExitErrorf("Error reading file with path: %q", path)
+		}
+
+		if !info.IsDir() {
+			localPaths = append(localPaths, path)
+		}
+
+		return nil
+	})
+
+	return localPaths
 }
 
 // CheckFiles : Iterate through all the files and compare checksums

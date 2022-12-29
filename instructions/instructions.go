@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/fatih/color"
-	"log"
 	"os"
 	"strings"
 )
@@ -35,14 +34,73 @@ func DeleteRemote(sess *session.Session, remoteName string) {
 func Copy(sess *session.Session, fromPath string, toPath string) {
 	if services.IsRemotePath(fromPath) {
 		bucketName := services.GetBucketNameFromRemotePath(fromPath)
-		remoteFilePath := services.GetRemoteFilePath(fromPath)
+		filesPathsToDownload := services.GetRemoteFilePaths(sess, fromPath)
+		remotePathPrefix := services.GetRemoteFilePathPrefix(fromPath)
 
-		services.DownloadFile(sess, bucketName, remoteFilePath, toPath)
+		if len(filesPathsToDownload) == 1 && "/"+filesPathsToDownload[0] == services.GetRemoteFilePath(fromPath) {
+			if _, err := os.Stat(toPath); os.IsNotExist(err) {
+				if err := os.MkdirAll(toPath, os.ModeSticky|os.ModePerm); err != nil {
+					fmt.Printf("Error creating file with path: %q", toPath)
+				}
+			}
+
+			if toPath[len(toPath)-1:] != "/" {
+				toPath = toPath + "/"
+			}
+
+			services.DownloadFile(sess, bucketName, services.GetRemoteFilePath(fromPath), toPath)
+		} else {
+			for _, remoteFilePathToDownload := range filesPathsToDownload {
+				remotePathFileWithoutPrefix := strings.Replace(remoteFilePathToDownload, remotePathPrefix, "", 1)
+
+				if remotePathFileWithoutPrefix[0:1] != "/" && toPath[len(toPath)-1:] != "/" {
+					remotePathFileWithoutPrefix = "/" + remotePathFileWithoutPrefix
+				}
+
+				localFilePath := toPath + remotePathFileWithoutPrefix
+				localFileName := services.GetFileNameByPath(localFilePath)
+				localFileDirectoryPath := strings.Replace(localFilePath, localFileName, "", 1)
+
+				if _, err := os.Stat(localFileDirectoryPath); os.IsNotExist(err) {
+					if err := os.MkdirAll(localFileDirectoryPath, os.ModeSticky|os.ModePerm); err != nil {
+						fmt.Printf("Error creating file with path: %q", localFileDirectoryPath)
+					}
+				}
+
+				services.DownloadFile(sess, bucketName, remoteFilePathToDownload, localFileDirectoryPath)
+			}
+		}
+
+		fmt.Println()
 	} else {
 		bucketName := services.GetBucketNameFromRemotePath(toPath)
 		remoteFilePath := services.GetRemoteFilePath(toPath)
+		filesPathsToUpload := services.GetLocalFilePaths(fromPath)
 
-		services.UploadFileWithChecksum(sess, bucketName, fromPath, remoteFilePath)
+		// If we want to copy empty file
+		if len(filesPathsToUpload) == 1 && filesPathsToUpload[0] == fromPath {
+			if !strings.HasSuffix(remoteFilePath, "/") {
+				remoteFilePath = remoteFilePath + "/"
+			}
+
+			services.UploadFileWithChecksum(sess, bucketName, fromPath, remoteFilePath)
+		} else {
+			localPathPrefix := services.GetLocalPathPrefix(fromPath)
+
+			for _, fileToUpdate := range filesPathsToUpload {
+				fileNameToUpdate := services.GetFileNameByPath(fileToUpdate)
+
+				fileToUploadRemotePrefix := strings.Replace(
+					strings.Replace(fileToUpdate, localPathPrefix, "", 1), fileNameToUpdate, "", 1)
+
+				// Add / to remoteFilePath if it was not entered in terminal
+				if !strings.HasSuffix(remoteFilePath, "/") {
+					remoteFilePath = remoteFilePath + "/"
+				}
+
+				services.UploadFileWithChecksum(sess, bucketName, fileToUpdate, remoteFilePath+fileToUploadRemotePrefix)
+			}
+		}
 	}
 }
 
@@ -52,14 +110,44 @@ func Move(sess *session.Session, fromPath string, toPath string) {
 
 	if services.IsRemotePath(fromPath) {
 		bucketName := services.GetBucketNameFromRemotePath(fromPath)
-		remoteFilePath := services.GetRemoteFilePath(fromPath)
 
-		services.DeleteBucketFile(sess, bucketName, remoteFilePath)
+		remoteFilesPathsToDownload := services.GetRemoteFilePaths(sess, fromPath)
+
+		for _, remoteFilePathToDownload := range remoteFilesPathsToDownload {
+			fmt.Println(remoteFilePathToDownload)
+
+			services.DeleteBucketFile(sess, bucketName, remoteFilePathToDownload)
+		}
+
 	} else {
-		e := os.Remove(fromPath)
+		localFilesPathsToDownload := services.GetLocalFilePaths(fromPath)
 
-		if e != nil {
-			log.Fatal(e)
+		for _, localFilePathToDownload := range localFilesPathsToDownload {
+			fmt.Println(localFilePathToDownload)
+
+			e := os.Remove(localFilePathToDownload)
+
+			if e != nil {
+				services.ExitErrorf("Error removing local file: %q", localFilePathToDownload)
+			}
+
+			fmt.Printf("File %q has been removed", localFilePathToDownload)
+		}
+
+		if _, err := os.Stat(fromPath); !os.IsNotExist(err) {
+			fromPathInfo, err := os.Stat(fromPath)
+
+			if err != nil {
+				services.ExitErrorf("Error getting info about file: %q", fromPath)
+			}
+
+			if fromPathInfo.IsDir() {
+				e := os.Remove(fromPath)
+
+				if e != nil {
+					services.ExitErrorf("Error removing local file: %q", fromPath)
+				}
+			}
 		}
 	}
 }
@@ -130,10 +218,6 @@ func GetRemotes(sess *session.Session) {
 
 // Check : Helper function to check if local and remote directories are up-to-date
 func Check(sess *session.Session, localPath string, remotePath string) {
-	if !services.RemotePathExists(sess, remotePath) {
-		services.ExitErrorf("Remote path %q does not exist.\nCheck the correctness of input or arguments order", remotePath)
-	}
-
 	if _, err := os.Stat(localPath); os.IsNotExist(err) {
 		services.ExitErrorf("Local path %q does not exist.\nCheck the correctness of input or arguments order", localPath)
 	}
