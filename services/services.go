@@ -1,6 +1,7 @@
 package services
 
 import (
+	"bufio"
 	"crypto/md5"
 	"fmt"
 	"github.com/aws/aws-sdk-go/aws"
@@ -158,6 +159,24 @@ func GetLocalPathPrefix(localPath string) string {
 	return localPathPrefix
 }
 
+// Check if path starts with paths in .clonignore file
+func ShouldIgnoreFile(suffixesToIgnore []string, pathToCheck string) bool {
+	for _, suffixToIgnore := range suffixesToIgnore {
+		// Check if suffixToIgnore is directory path
+		if strings.HasSuffix(suffixToIgnore, "/") {
+			if strings.HasPrefix(pathToCheck, suffixToIgnore) {
+				return true
+			}
+		} else {
+			if pathToCheck == suffixToIgnore {
+				return true
+			}
+		}
+	}
+
+	return false
+}
+
 // GetRemoteFilePaths : Get array of remote file paths by given remote path
 func GetRemoteFilePaths(sess *session.Session, remotePath string) []string {
 	svc := s3.New(sess)
@@ -202,19 +221,42 @@ func GetLocalFilePaths(localPath string) []string {
 }
 
 // CheckFiles : Iterate through all the files and compare checksums
-func CheckFiles(sess *session.Session, bucket string, remotePath string, localPath string) CheckFilesResult {
+func CheckFiles(sess *session.Session, bucket string, localPath string, remotePath string) CheckFilesResult {
 	checkFilesResult := CheckFilesResult{}
 	remotePathPrefix := GetRemotePathPrefix(remotePath)
 	localPathPrefix := GetLocalPathPrefix(localPath)
-
-	var filesToUpdate []string
+	clonignoreFilePath := localPath + "/" + ".clonignore"
 	remoteFiles, _ := GetAwsS3ItemMap(sess, bucket, remotePath)
 	remoteFilesPaths := make([]string, len(remoteFiles))
+	var clonignoreFilesPathsToSkip []string
+	var filesToUpdate []string
 
 	i := 0
 	for remotePath := range remoteFiles {
 		remoteFilesPaths[i] = remotePath
 		i++
+	}
+
+	// Check if .clonignore file exists
+	if _, err := os.Stat(clonignoreFilePath); err == nil {
+		readFile, err := os.Open(clonignoreFilePath)
+
+		if err != nil {
+			fmt.Println("Error reading .clonignore file")
+		}
+
+		fileScanner := bufio.NewScanner(readFile)
+		fileScanner.Split(bufio.ScanLines)
+
+		for fileScanner.Scan() {
+			clonignoreFilesPathsToSkip = append(clonignoreFilesPathsToSkip, localPathPrefix+strings.TrimSpace(fileScanner.Text()))
+		}
+
+		readFileCloseErr := readFile.Close()
+
+		if readFileCloseErr != nil {
+			fmt.Println("Error closing .clonignore file")
+		}
 	}
 
 	filepath.Walk(localPath, func(path string, info os.FileInfo, err error) error {
@@ -231,7 +273,11 @@ func CheckFiles(sess *session.Session, bucket string, remotePath string, localPa
 
 				// If checksum does not match add this file to arrays with files t
 				if !ValidateChecksum(contents, remoteFiles[remotePathPrefix+localFilePathOnRemote]) {
-					filesToUpdate = append(filesToUpdate, path)
+					// Skip file which exists in .clonignore file
+					if !ShouldIgnoreFile(clonignoreFilesPathsToSkip, path) {
+						filesToUpdate = append(filesToUpdate, path)
+					}
+
 				}
 
 				filteredRemoteFilesPaths := make([]string, 0)
