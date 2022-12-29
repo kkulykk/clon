@@ -2,12 +2,18 @@ package services
 
 import (
 	"bufio"
+	"bytes"
+	"crypto/aes"
+	"crypto/cipher"
 	"crypto/md5"
+	"crypto/rand"
+	"encoding/base64"
 	"fmt"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/joho/godotenv"
+	"io"
 	"log"
 	"os"
 	"path/filepath"
@@ -123,6 +129,7 @@ func IsDirectory(path string) bool {
 func ValidateChecksum(localFileContent []byte, remoteFileChecksum string) bool {
 	localFileMd5Sum := md5.Sum(localFileContent)
 	localFileChecksum := fmt.Sprintf("%x", localFileMd5Sum)
+	// TODO: fix checksum considering encryption
 
 	if localFileChecksum == remoteFileChecksum {
 		return true
@@ -158,7 +165,7 @@ func GetLocalPathPrefix(localPath string) string {
 	return localPathPrefix
 }
 
-// Check if path starts with paths in .clonignore file
+// ShouldIgnoreFile Check if path starts with paths in .clonignore file
 func ShouldIgnoreFile(suffixesToIgnore []string, pathToCheck string) bool {
 	for _, suffixToIgnore := range suffixesToIgnore {
 		// Check if suffixToIgnore is directory path
@@ -221,14 +228,19 @@ func CheckFiles(sess *session.Session, bucket string, localPath string, remotePa
 		}
 
 		if !info.IsDir() {
-			contents, err := os.ReadFile(path)
+			//contents, err := os.ReadFile(path)
+			file, err := os.Open(path)
+			reader := bufio.NewReader(file)
+			content, _ := io.ReadAll(reader)
+			encodedBase64 := base64.StdEncoding.EncodeToString(content)
+			encryptedData := Encrypt(encodedBase64)
 
 			if err == nil {
 				// Should remote /remote from the beginning of the local path to conform with remote path
 				localFilePathOnRemote := strings.Replace(path, localPathPrefix, "", 1)
 
 				// If checksum does not match add this file to arrays with files t
-				if !ValidateChecksum(contents, remoteFiles[remotePathPrefix+localFilePathOnRemote]) {
+				if !ValidateChecksum(encryptedData, remoteFiles[remotePathPrefix+localFilePathOnRemote]) {
 					// Skip file which exists in .clonignore file
 					if !ShouldIgnoreFile(clonignoreFilesPathsToSkip, path) {
 						filesToUpdate = append(filesToUpdate, path)
@@ -257,4 +269,77 @@ func CheckFiles(sess *session.Session, bucket string, localPath string, remotePa
 	checkFilesResult.FilesToDelete = remoteFilesPaths
 
 	return checkFilesResult
+}
+
+// Encrypt : Helper function for files encryption
+// Inspired by Joseph Spurrier https://gist.github.com/josephspurrier/8304f09562d81babb494
+func Encrypt(dataString string) []byte {
+	data := []byte(dataString)
+	key := []byte(GetEnvWithKey("AWS_ENCRYPTION_KEY"))
+
+	block, err := aes.NewCipher(key)
+	if err != nil {
+		panic(err)
+	}
+
+	ciphertext := make([]byte, aes.BlockSize+len(data))
+	iv := ciphertext[:aes.BlockSize]
+
+	if _, err := io.ReadFull(rand.Reader, iv); err != nil {
+		panic(err)
+	}
+
+	stream := cipher.NewCFBEncrypter(block, iv)
+	stream.XORKeyStream(ciphertext[aes.BlockSize:], data)
+
+	return ciphertext
+}
+
+// Decrypt : Helper function for files decryption
+// Inspired by Joseph Spurrier https://gist.github.com/josephspurrier/8304f09562d81babb494
+func Decrypt(data []byte) []byte {
+	key := []byte(GetEnvWithKey("AWS_ENCRYPTION_KEY"))
+
+	block, err := aes.NewCipher(key)
+	if err != nil {
+		panic(err)
+	}
+
+	if len(data) < aes.BlockSize {
+		panic("Text is too short")
+	}
+
+	iv := data[:aes.BlockSize]
+	data = data[aes.BlockSize:]
+	stream := cipher.NewCFBDecrypter(block, iv)
+	stream.XORKeyStream(data, data)
+
+	return data
+}
+
+// EncryptFile Read file, convert it to base64 and encrypt
+func EncryptFile(filepath string) []byte {
+	file, err := os.Open(filepath)
+	reader := bufio.NewReader(file)
+	content, err := io.ReadAll(reader)
+	encodedBase64 := base64.StdEncoding.EncodeToString(content)
+	encryptedData := Encrypt(encodedBase64)
+
+	if err != nil {
+		ExitErrorf("An error with encrypting %q", filepath)
+	}
+
+	return encryptedData
+}
+
+// DecryptFile Read file, convert it to base64 and encrypt
+func DecryptFile(buffer []byte) []byte {
+	decrypted := Decrypt(buffer)
+
+	decrypted = bytes.Trim(decrypted, "\x00")
+	decryptedData := make([]byte, base64.StdEncoding.DecodedLen(len(decrypted)))
+
+	_, _ = base64.StdEncoding.Decode(decryptedData, decrypted)
+
+	return decryptedData
 }
