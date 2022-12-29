@@ -1,13 +1,13 @@
 package services
 
 import (
+	"bytes"
 	"crypto/md5"
 	"fmt"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/aws/aws-sdk-go/service/s3/s3manager"
-	"io/ioutil"
 	"os"
 	"strings"
 )
@@ -16,31 +16,28 @@ import (
 func DownloadFile(sess *session.Session, bucket string, remoteFilePath string, localDirectoryPath string) {
 	fileName := GetFileNameByPath(remoteFilePath)
 	localFilePath := localDirectoryPath + fileName
-	file, err := os.Create(localFilePath)
-
-	if err != nil {
-		fmt.Println(err)
-	}
-
-	defer func(file *os.File) {
-		err := file.Close()
-		if err != nil {
-			ExitErrorf("Unable to close the file")
-		}
-	}(file)
 
 	downloader := s3manager.NewDownloader(sess)
-	numBytes, err := downloader.Download(file,
+	buf := aws.NewWriteAtBuffer([]byte{})
+	numBytes, err := downloader.Download(buf,
 		&s3.GetObjectInput{
 			Bucket: aws.String(bucket),
 			Key:    aws.String(remoteFilePath),
 		})
 
+	decryptedData := DecryptFile(buf.Bytes())
+
+	err = os.WriteFile(localFilePath, decryptedData, os.FileMode(0644))
+
+	if err != nil {
+		ExitErrorf("Error saving file %q, %v", fileName, err)
+	}
+
 	if err != nil {
 		ExitErrorf("Unable to download item %q, %v", remoteFilePath, err)
 	}
 
-	fmt.Println("Downloaded", file.Name(), numBytes, "bytes")
+	fmt.Printf("Downloaded %q [%d bytes]\n", fileName, numBytes)
 }
 
 // UploadFileWithChecksum : AWS S3 helper method to upload new file to a bucket with upload file integrity check (checksum)
@@ -48,28 +45,17 @@ func UploadFileWithChecksum(sess *session.Session, bucket string, localFilePath 
 	svc := s3.New(sess)
 	fileName := GetFileNameByPath(localFilePath)
 	remoteFilePath := remoteDirectoryPath + fileName
-	file, err := os.Open(localFilePath)
 
-	if err != nil {
-		ExitErrorf("Unable to open file %q, %v", err)
-	}
-
-	defer func(file *os.File) {
-		err := file.Close()
-		if err != nil {
-			ExitErrorf("Unable to close the file")
-		}
-	}(file)
+	encryptedFile := EncryptFile(localFilePath)
 
 	uploader := s3manager.NewUploader(sess)
-	_, err = uploader.Upload(&s3manager.UploadInput{
+	_, err := uploader.Upload(&s3manager.UploadInput{
 		Bucket: aws.String(bucket),
 		Key:    aws.String(remoteFilePath),
-		Body:   file,
+		Body:   bytes.NewReader(encryptedFile),
 	})
 
 	if err != nil {
-		// Print the error and exit.
 		ExitErrorf("Unable to upload %q to %q, %v", remoteFilePath, bucket, err)
 	}
 
@@ -83,44 +69,11 @@ func UploadFileWithChecksum(sess *session.Session, bucket string, localFilePath 
 		ExitErrorf("Unable to get checksum of uploaded file")
 	}
 
-	fileContent, err := ioutil.ReadFile(localFilePath)
 	remoteFileChecksum := strings.Trim(*(s3obj.ETag), "\"")
-	localFileChecksum := fmt.Sprintf("%x", md5.Sum(fileContent))
+	localFileChecksum := fmt.Sprintf("%x", md5.Sum(encryptedFile))
 
 	if localFileChecksum != remoteFileChecksum {
 		ExitErrorf("Checksum mismatch of file %q on %q bucket", remoteFilePath, bucket)
-	}
-
-	fmt.Printf("Successfully uploaded %q to %q\n", remoteFilePath, bucket)
-}
-
-// UploadFile : AWS S3 helper method to upload new file to a bucket
-func UploadFile(sess *session.Session, bucket string, localFilePath string, remoteDirectoryPath string) {
-	fileName := GetFileNameByPath(localFilePath)
-	remoteFilePath := remoteDirectoryPath + fileName
-	file, err := os.Open(localFilePath)
-
-	if err != nil {
-		ExitErrorf("Unable to open file %q, %v", err)
-	}
-
-	defer func(file *os.File) {
-		err := file.Close()
-		if err != nil {
-			ExitErrorf("Unable to close the file")
-		}
-	}(file)
-
-	uploader := s3manager.NewUploader(sess)
-	_, err = uploader.Upload(&s3manager.UploadInput{
-		Bucket: aws.String(bucket),
-		Key:    aws.String(remoteFilePath),
-		Body:   file,
-	})
-
-	if err != nil {
-		// Print the error and exit.
-		ExitErrorf("Unable to upload %q to %q, %v", remoteFilePath, bucket, err)
 	}
 
 	fmt.Printf("Successfully uploaded %q to %q\n", remoteFilePath, bucket)
@@ -317,6 +270,7 @@ func GetBucketFileSize(sess *session.Session, bucket string, remoteFilePath stri
 	fmt.Printf("Size of %q (bucket: %q): %v bytes\n", remoteFilePath, bucket, aws.Int64Value(result.ContentLength))
 }
 
+// RemotePathExists : AWS S3 helper method to check if the path in the remote exists
 func RemotePathExists(sess *session.Session, remotePath string) bool {
 	svc := s3.New(sess)
 	bucketName := GetBucketNameFromRemotePath(remotePath)
@@ -331,13 +285,9 @@ func RemotePathExists(sess *session.Session, remotePath string) bool {
 	return true
 }
 
-/*
-*
-getAwsS3ItemMap constructs and returns a map of keys (relative filenames)
-to checksums for the given bucket-configured s3 service.
-It is assumed  that the objects have not been multipart-uploaded,
-which will change the checksum.
-*/
+// GetAwsS3ItemMap : constructs and returns a map of keys (relative filenames) to checksums for the given
+// bucket-configured s3 service. It is assumed  that the objects have not been multipart-uploaded,
+// which will change the checksum.
 func GetAwsS3ItemMap(sess *session.Session, bucket string, remotePath string) (map[string]string, error) {
 	svc := s3.New(sess)
 
