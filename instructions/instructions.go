@@ -34,16 +34,8 @@ func DeleteRemote(sess *session.Session, remoteName string) {
 func Copy(sess *session.Session, fromPath string, toPath string) {
 	if services.IsRemotePath(fromPath) {
 		bucketName := services.GetBucketNameFromRemotePath(fromPath)
-		//remoteFilePath := services.GetRemoteFilePath(fromPath)
-		//
-
 		filesPathsToDownload := services.GetRemoteFilePaths(sess, fromPath)
 		remotePathPrefix := services.GetRemoteFilePathPrefix(fromPath)
-
-		fmt.Println("toPath", toPath)
-		fmt.Println("remotePathPrefix", remotePathPrefix)
-		fmt.Println("filesPathsToDownload", filesPathsToDownload)
-		fmt.Println("services.GetRemoteFilePath(fromPath)", services.GetRemoteFilePath(fromPath))
 
 		if len(filesPathsToDownload) == 1 && "/"+filesPathsToDownload[0] == services.GetRemoteFilePath(fromPath) {
 			if _, err := os.Stat(toPath); os.IsNotExist(err) {
@@ -69,10 +61,6 @@ func Copy(sess *session.Session, fromPath string, toPath string) {
 				localFileName := services.GetFileNameByPath(localFilePath)
 				localFileDirectoryPath := strings.Replace(localFilePath, localFileName, "", 1)
 
-				fmt.Println("remote file path:", remoteFilePathToDownload)
-				fmt.Println("local path where to store file:", localFilePath)
-				fmt.Println("localFileDirectoryPath:", localFileDirectoryPath)
-
 				if _, err := os.Stat(localFileDirectoryPath); os.IsNotExist(err) {
 					if err := os.MkdirAll(localFileDirectoryPath, os.ModeSticky|os.ModePerm); err != nil {
 						fmt.Printf("Error creating file with path: %q", localFileDirectoryPath)
@@ -97,10 +85,6 @@ func Copy(sess *session.Session, fromPath string, toPath string) {
 
 			services.UploadFileWithChecksum(sess, bucketName, fromPath, remoteFilePath)
 		} else {
-			//fmt.Println("fromPath", fromPath)
-			//fmt.Println("GetLocalPathPrefix()", services.GetLocalPathPrefix(fromPath))
-			//fmt.Println("remoteFilePath", remoteFilePath)
-
 			localPathPrefix := services.GetLocalPathPrefix(fromPath)
 
 			for _, fileToUpdate := range filesPathsToUpload {
@@ -127,8 +111,6 @@ func Move(sess *session.Session, fromPath string, toPath string) {
 	if services.IsRemotePath(fromPath) {
 		bucketName := services.GetBucketNameFromRemotePath(fromPath)
 
-		fmt.Println("Remove from REMOTE")
-
 		remoteFilesPathsToDownload := services.GetRemoteFilePaths(sess, fromPath)
 
 		for _, remoteFilePathToDownload := range remoteFilesPathsToDownload {
@@ -138,8 +120,6 @@ func Move(sess *session.Session, fromPath string, toPath string) {
 		}
 
 	} else {
-		fmt.Println("Remove from LOCAL")
-
 		localFilesPathsToDownload := services.GetLocalFilePaths(fromPath)
 
 		for _, localFilePathToDownload := range localFilesPathsToDownload {
