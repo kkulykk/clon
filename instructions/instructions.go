@@ -123,7 +123,6 @@ func Move(sess *session.Session, fromPath string, toPath string) {
 		localFilesPathsToDownload := services.GetLocalFilePaths(fromPath)
 
 		for _, localFilePathToDownload := range localFilesPathsToDownload {
-			fmt.Println(localFilePathToDownload)
 
 			e := os.Remove(localFilePathToDownload)
 
@@ -131,7 +130,7 @@ func Move(sess *session.Session, fromPath string, toPath string) {
 				services.ExitErrorf("Error removing local file: %q", localFilePathToDownload)
 			}
 
-			fmt.Printf("File %q has been removed", localFilePathToDownload)
+			fmt.Printf("File %q has been removed\n", localFilePathToDownload)
 		}
 
 		if _, err := os.Stat(fromPath); !os.IsNotExist(err) {
