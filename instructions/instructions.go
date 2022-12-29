@@ -35,14 +35,124 @@ func DeleteRemote(sess *session.Session, remoteName string) {
 func Copy(sess *session.Session, fromPath string, toPath string) {
 	if services.IsRemotePath(fromPath) {
 		bucketName := services.GetBucketNameFromRemotePath(fromPath)
-		remoteFilePath := services.GetRemoteFilePath(fromPath)
+		//remoteFilePath := services.GetRemoteFilePath(fromPath)
+		//
 
-		services.DownloadFile(sess, bucketName, remoteFilePath, toPath)
+		filesPathsToDownload := services.GetRemoteFilePaths(sess, fromPath)
+		remotePathPrefix := services.GetRemoteFilePathPrefix(fromPath)
+
+		fmt.Println("toPath", toPath)
+		fmt.Println("remotePathPrefix", remotePathPrefix)
+		fmt.Println("filesPathsToDownload", filesPathsToDownload)
+		fmt.Println("services.GetRemoteFilePath(fromPath)", services.GetRemoteFilePath(fromPath))
+
+		if len(filesPathsToDownload) == 1 && "/"+filesPathsToDownload[0] == services.GetRemoteFilePath(fromPath) {
+			if _, err := os.Stat(toPath); os.IsNotExist(err) {
+				if err := os.MkdirAll(toPath, os.ModeSticky|os.ModePerm); err != nil {
+					fmt.Printf("Error creating file with path: %q", toPath)
+				}
+			}
+
+			if toPath[len(toPath)-1:] != "/" {
+				toPath = toPath + "/"
+			}
+
+			services.DownloadFile(sess, bucketName, services.GetRemoteFilePath(fromPath), toPath)
+		} else {
+			for _, remoteFilePathToDownload := range filesPathsToDownload {
+				remotePathFileWithoutPrefix := strings.Replace(remoteFilePathToDownload, remotePathPrefix, "", 1)
+
+				if remotePathFileWithoutPrefix[0:1] != "/" && toPath[len(toPath)-1:] != "/" {
+					remotePathFileWithoutPrefix = "/" + remotePathFileWithoutPrefix
+				}
+
+				localFilePath := toPath + remotePathFileWithoutPrefix
+				localFileName := services.GetFileNameByPath(localFilePath)
+				localFileDirectoryPath := strings.Replace(localFilePath, localFileName, "", 1)
+
+				fmt.Println("remote file path:", remoteFilePathToDownload)
+				fmt.Println("local path where to store file:", localFilePath)
+				fmt.Println("localFileDirectoryPath:", localFileDirectoryPath)
+
+				if _, err := os.Stat(localFileDirectoryPath); os.IsNotExist(err) {
+					if err := os.MkdirAll(localFileDirectoryPath, os.ModeSticky|os.ModePerm); err != nil {
+						fmt.Printf("Error creating file with path: %q", localFileDirectoryPath)
+					}
+				}
+
+				services.DownloadFile(sess, bucketName, remoteFilePathToDownload, localFileDirectoryPath)
+			}
+		}
+
+		fmt.Println()
+
+		//if _, err := os.Stat("./remote/folder4/"); !os.IsNotExist(err) {
+		//	fmt.Println("Path exists")
+		//} else {
+		//	fmt.Println("Path does NOR exist")
+		//}
+		//
+		//if err := os.MkdirAll("./remote/folder4/", os.ModeSticky|os.ModePerm); err != nil {
+		//	fmt.Printf("Error creating file with path: %q", "folder1/new_folder1")
+		//}
+		//
+		//if _, err := os.Stat("./remote/folder4/"); !os.IsNotExist(err) {
+		//	fmt.Println("Path exists")
+		//} else {
+		//	fmt.Println("Path does NOR exist")
+		//}
+
+		//if err := os.MkdirAll("./remote/folder3", os.ModeSticky|os.ModePerm); err != nil {
+		//	fmt.Printf("Error creating file with path: %q", "folder1/new_folder1")
+		//}
+
+		//if err := os.MkdirAll("./remote/folder3", os.ModeSticky|os.ModePerm); err != nil {
+		//	fmt.Printf("Error creating file with path: %q", "folder1/new_folder1")
+		//}
+
+		//services.DownloadFile(sess, "clon-demo", "folder1/new_folder1/new_text1.txt", "./remote/folder3/")
+
+		//fmt.Println("fromPath", fromPath)
+		//fmt.Println("toPath", toPath)
+		//fmt.Println("remoteFilePath", remoteFilePath)
+		//
+		//fmt.Println("services.GetRemoteFilePaths(sess, fromPath)", services.GetRemoteFilePaths(sess, fromPath))
 	} else {
 		bucketName := services.GetBucketNameFromRemotePath(toPath)
 		remoteFilePath := services.GetRemoteFilePath(toPath)
+		filesPathsToUpload := services.GetLocalFilePaths(fromPath)
 
-		services.UploadFileWithChecksum(sess, bucketName, fromPath, remoteFilePath)
+		// If we want to copy empty file
+		if len(filesPathsToUpload) == 1 && filesPathsToUpload[0] == fromPath {
+			if !strings.HasSuffix(remoteFilePath, "/") {
+				remoteFilePath = remoteFilePath + "/"
+			}
+
+			services.UploadFileWithChecksum(sess, bucketName, fromPath, remoteFilePath)
+		} else {
+			//fmt.Println("fromPath", fromPath)
+			//fmt.Println("GetLocalPathPrefix()", services.GetLocalPathPrefix(fromPath))
+			//fmt.Println("remoteFilePath", remoteFilePath)
+
+			localPathPrefix := services.GetLocalPathPrefix(fromPath)
+
+			for _, fileToUpdate := range filesPathsToUpload {
+				fileNameToUpdate := services.GetFileNameByPath(fileToUpdate)
+
+				fileToUploadRemotePrefix := strings.Replace(
+					strings.Replace(fileToUpdate, localPathPrefix, "", 1), fileNameToUpdate, "", 1)
+
+				// Add / to remoteFilePath if it was not entered in terminal
+				if !strings.HasSuffix(remoteFilePath, "/") {
+					remoteFilePath = remoteFilePath + "/"
+				}
+
+				services.UploadFileWithChecksum(sess, bucketName, fileToUpdate, remoteFilePath+fileToUploadRemotePrefix)
+			}
+
+		}
+		// add directory path to remote
+		//services.UploadFileWithChecksum(sess, bucketName, fromPath, remoteFilePath)
 	}
 }
 

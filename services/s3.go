@@ -51,7 +51,7 @@ func UploadFileWithChecksum(sess *session.Session, bucket string, localFilePath 
 	file, err := os.Open(localFilePath)
 
 	if err != nil {
-		ExitErrorf("Unable to open file %q, %v", err)
+		ExitErrorf("Unable to open file %q", err)
 	}
 
 	defer func(file *os.File) {
