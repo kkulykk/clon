@@ -218,10 +218,6 @@ func GetRemotes(sess *session.Session) {
 
 // Check : Helper function to check if local and remote directories are up-to-date
 func Check(sess *session.Session, localPath string, remotePath string) {
-	if !services.RemotePathExists(sess, remotePath) {
-		services.ExitErrorf("Remote path %q does not exist.\nCheck the correctness of input or arguments order", remotePath)
-	}
-
 	if _, err := os.Stat(localPath); os.IsNotExist(err) {
 		services.ExitErrorf("Local path %q does not exist.\nCheck the correctness of input or arguments order", localPath)
 	}
