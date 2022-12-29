@@ -275,7 +275,7 @@ func Sync(sess *session.Session, localPath string, remotePath string) {
 				remoteFileDirectory := strings.Join(splitRemoteFileDirectory[:len(splitRemoteFileDirectory)-1], "/") + "/"
 
 				// We should replace localPathPrefix with remotePathPrefix to set correct bucket path
-				services.UploadFile(sess, bucket, fileToUpdate, strings.Replace(remoteFileDirectory, localPathPrefix, remotePathPrefix, 1))
+				services.UploadFileWithChecksum(sess, bucket, fileToUpdate, strings.Replace(remoteFileDirectory, localPathPrefix, remotePathPrefix, 1))
 			}
 		} else {
 			os.Exit(1)

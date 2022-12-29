@@ -2,13 +2,18 @@ package services
 
 import (
 	"bufio"
+	"bytes"
+	"crypto/aes"
+	"crypto/cipher"
 	"crypto/md5"
+	"encoding/base64"
 	"fmt"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/joho/godotenv"
+	"io"
 	"log"
 	"os"
 	"path/filepath"
@@ -159,7 +164,7 @@ func GetLocalPathPrefix(localPath string) string {
 	return localPathPrefix
 }
 
-// Check if path starts with paths in .clonignore file
+// ShouldIgnoreFile Check if path starts with paths in .clonignore file
 func ShouldIgnoreFile(suffixesToIgnore []string, pathToCheck string) bool {
 	for _, suffixToIgnore := range suffixesToIgnore {
 		// Check if suffixToIgnore is directory path
@@ -265,19 +270,22 @@ func CheckFiles(sess *session.Session, bucket string, localPath string, remotePa
 		}
 
 		if !info.IsDir() {
-			contents, err := os.ReadFile(path)
+			file, err := os.Open(path)
+			reader := bufio.NewReader(file)
+			content, _ := io.ReadAll(reader)
+			encodedBase64 := base64.StdEncoding.EncodeToString(content)
+			encryptedData := Encrypt(encodedBase64)
 
 			if err == nil {
 				// Should remote /remote from the beginning of the local path to conform with remote path
 				localFilePathOnRemote := strings.Replace(path, localPathPrefix, "", 1)
 
 				// If checksum does not match add this file to arrays with files t
-				if !ValidateChecksum(contents, remoteFiles[remotePathPrefix+localFilePathOnRemote]) {
+				if !ValidateChecksum(encryptedData, remoteFiles[remotePathPrefix+localFilePathOnRemote]) {
 					// Skip file which exists in .clonignore file
 					if !ShouldIgnoreFile(clonignoreFilesPathsToSkip, path) {
 						filesToUpdate = append(filesToUpdate, path)
 					}
-
 				}
 
 				filteredRemoteFilesPaths := make([]string, 0)
@@ -301,4 +309,71 @@ func CheckFiles(sess *session.Session, bucket string, localPath string, remotePa
 	checkFilesResult.FilesToDelete = remoteFilesPaths
 
 	return checkFilesResult
+}
+
+// Encrypt : Helper function for files encryption
+func Encrypt(dataString string) []byte {
+	aesBlock, err := aes.NewCipher([]byte(GetEnvWithKey("AWS_ENCRYPTION_KEY")))
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	gcmInstance, err := cipher.NewGCM(aesBlock)
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	nonce := make([]byte, gcmInstance.NonceSize())
+	cipheredText := gcmInstance.Seal(nonce, nonce, []byte(dataString), nil)
+
+	return cipheredText
+}
+
+// Decrypt : Helper function for files decryption
+func Decrypt(data []byte) []byte {
+	aesBlock, err := aes.NewCipher([]byte(GetEnvWithKey("AWS_ENCRYPTION_KEY")))
+	if err != nil {
+		log.Fatalln(err)
+	}
+	gcmInstance, err := cipher.NewGCM(aesBlock)
+	if err != nil {
+		log.Fatalln(err)
+	}
+
+	nonceSize := gcmInstance.NonceSize()
+	nonce, cipheredText := data[:nonceSize], data[nonceSize:]
+
+	originalText, err := gcmInstance.Open(nil, nonce, cipheredText, nil)
+	if err != nil {
+		log.Fatalln(err)
+	}
+
+	return originalText
+}
+
+// EncryptFile Read file, convert it to base64 and encrypt
+func EncryptFile(filepath string) []byte {
+	file, err := os.Open(filepath)
+	reader := bufio.NewReader(file)
+	content, err := io.ReadAll(reader)
+	encodedBase64 := base64.StdEncoding.EncodeToString(content)
+	encryptedData := Encrypt(encodedBase64)
+
+	if err != nil {
+		ExitErrorf("An error with encrypting %q", filepath)
+	}
+
+	return encryptedData
+}
+
+// DecryptFile Read file, convert it to base64 and encrypt
+func DecryptFile(buffer []byte) []byte {
+	decrypted := Decrypt(buffer)
+
+	decrypted = bytes.Trim(decrypted, "\x00")
+	decryptedData := make([]byte, base64.StdEncoding.DecodedLen(len(decrypted)))
+
+	_, _ = base64.StdEncoding.Decode(decryptedData, decrypted)
+
+	return decryptedData
 }
