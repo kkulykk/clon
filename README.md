@@ -143,6 +143,26 @@ Return size of file in bytes.
 ![Screen Recording 2022-10-31 at 20 02 35](https://user-images.githubusercontent.com/72144618/199077871-267e9c93-62d8-4e49-b20c-8a1e177326db.gif)
 
 
+#### [NEW] check
+
+Usage: `clon [OPTIONS] check LocalPath RemotePath`
+
+Checks the files in the source and destination match. It compares sizes and
+hashes (MD5) and logs a report of files that don't match. It doesn't alter the source or destination.
+
+![Screen Recording 2022-12-30 at 14 03 38](https://user-images.githubusercontent.com/72144618/210068719-fa3e8b8f-4959-4435-9683-8368b66a2747.gif)
+
+
+#### [NEW] sync
+
+Usage: `clon [OPTIONS] sync [sync-OPTIONS] LocalPath RemotePath`
+
+Make source and dest identical, modifying destination only.
+
+![Screen Recording 2022-12-30 at 14 04 52](https://user-images.githubusercontent.com/72144618/210068593-4b5a58bb-40f7-4d30-b02e-e06290009659.gif)
+
+
+
 <p align="right">(<a href="#top">back to top</a>)</p>
 
 
@@ -165,10 +185,13 @@ Return size of file in bytes.
 - [ ] ~~Add `delete-file` command support~~ (was implemented inside `delete` command)
 - [x] Add `about` command support
 - [x] First presentation
-- [ ] Add `sync` command support
-- [ ] Add `check` command support
-- [ ] Add multiple providers support
-- [ ] Add SHA-1 encryption
+- [x] Add `sync` command support
+- [x] Add `check` command support
+- [x] Add data integrity validation
+- [x] Add recursive copy/move supprt
+- [x] Add `.clonignore` support
+- [ ] ~~Add multiple providers support~~
+- [x] Add AES encryption
 
 
 <p align="right">(<a href="#top">back to top</a>)</p>
